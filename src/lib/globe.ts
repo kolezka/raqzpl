@@ -9,6 +9,8 @@
  * cannot reach. No cell holds a character in more than one layer.
  */
 
+import { LAND_MASK, MAP_COLS, MAP_ROWS } from './coastlines.ts';
+
 export const GLOBE_COLS = 112;
 export const GLOBE_ROWS = 56;
 
@@ -18,152 +20,6 @@ const CELL_ASPECT = 2;
 /** Tilt of the polar axis, like the Earth. */
 export const AXIAL_TILT = (23.44 * Math.PI) / 180;
 
-const MAP_COLS = 64;
-const MAP_ROWS = 32;
-
-/**
- * Coarse land mask, equirectangular, north to south.
- * Each row holds the [firstColumn, lastColumn] spans that contain land.
- */
-const LAND_SPANS: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = [
-	[],
-	[[22, 26]],
-	[
-		[8, 18],
-		[22, 28],
-		[34, 35],
-		[56, 62]
-	],
-	[
-		[4, 20],
-		[22, 28],
-		[33, 63]
-	],
-	[
-		[2, 21],
-		[23, 27],
-		[32, 63]
-	],
-	[
-		[2, 21],
-		[24, 26],
-		[32, 63]
-	],
-	[
-		[4, 21],
-		[30, 31],
-		[33, 60]
-	],
-	[
-		[4, 22],
-		[30, 31],
-		[33, 60]
-	],
-	[
-		[5, 22],
-		[31, 58]
-	],
-	[
-		[6, 22],
-		[30, 57]
-	],
-	[
-		[7, 22],
-		[29, 56]
-	],
-	[
-		[9, 22],
-		[29, 53]
-	],
-	[
-		[11, 23],
-		[29, 53]
-	],
-	[
-		[14, 19],
-		[21, 24],
-		[28, 52]
-	],
-	[
-		[17, 26],
-		[28, 42],
-		[45, 47],
-		[52, 55]
-	],
-	[
-		[17, 27],
-		[29, 43],
-		[49, 53]
-	],
-	[
-		[17, 27],
-		[30, 43],
-		[49, 56]
-	],
-	[
-		[18, 27],
-		[31, 42],
-		[49, 58]
-	],
-	[
-		[18, 27],
-		[31, 41],
-		[51, 58]
-	],
-	[
-		[19, 26],
-		[32, 40],
-		[52, 59]
-	],
-	[
-		[19, 26],
-		[33, 40],
-		[42, 43],
-		[52, 60]
-	],
-	[
-		[20, 25],
-		[33, 39],
-		[42, 43],
-		[52, 60]
-	],
-	[
-		[20, 25],
-		[34, 39],
-		[53, 59]
-	],
-	[
-		[21, 24],
-		[61, 63]
-	],
-	[
-		[21, 23],
-		[61, 63]
-	],
-	[[21, 23]],
-	[[22, 23]],
-	[],
-	[
-		[5, 20],
-		[30, 63]
-	],
-	[[0, 63]],
-	[[0, 63]],
-	[[0, 63]]
-];
-
-const LAND = buildLandMask();
-
-function buildLandMask(): Uint8Array {
-	const mask = new Uint8Array(MAP_COLS * MAP_ROWS);
-	LAND_SPANS.forEach((row, rowIndex) => {
-		for (const [first, last] of row) {
-			for (let col = first; col <= last; col++) mask[rowIndex * MAP_COLS + col] = 1;
-		}
-	});
-	return mask;
-}
-
 // The surface ramps never share a character, so land stays readable against the ocean.
 const OCEAN_RAMP = '.,-~:';
 const LAND_RAMP = '=+*#@';
@@ -172,6 +28,17 @@ const GRID_RAMP = '.-+#';
 /** Glow outside the disc. */
 const HALO_RAMP = '.:';
 const HALO_DEPTH = 0.1;
+
+/** Faint stars, drawn in their own dim layer. */
+const DIM_STARS = '.,';
+/** Bright stars, drawn in their own layer with a glow. */
+const BRIGHT_STARS = '+*x';
+
+/** Satellite bodies, then the trail behind them, brightest first. */
+const SATELLITE_GLYPHS = 'oO';
+const SATELLITE_TRAIL = ',.';
+/** Gap between one trail mark and the next, in radians of the orbit. */
+const TRAIL_GAP = 0.05;
 
 /** Characters used while a title changes. */
 const MORPH_GLYPHS = '#@%*+=~-:.$&?/|<>';
@@ -192,10 +59,46 @@ const AMBIENT = 0.15;
 /** Meridians and parallels every 30 degrees. */
 const GRID_STEP = Math.PI / 6;
 
+/**
+ * Size of one patch of relief, in land mask cells. The mask is much finer than a
+ * character, so the noise is tied to a patch instead of a cell. That keeps the
+ * texture as coarse as the globe itself.
+ */
+const RELIEF_PATCH = 4;
+
 const CENTER_X = (GLOBE_COLS - 1) / 2;
 const CENTER_Y = (GLOBE_ROWS - 1) / 2;
 const RADIUS_Y = CENTER_Y * 0.9;
 const RADIUS_X = RADIUS_Y * CELL_ASPECT;
+
+/** One satellite on a circular orbit. */
+interface Orbit {
+	/** Orbit radius, in globe radii. */
+	radius: number;
+	/** Tilt of the orbit plane, in radians. */
+	inclination: number;
+	/** Turn of the orbit plane around the vertical axis, in radians. */
+	node: number;
+	/** Time for one turn, in milliseconds. A negative value runs the orbit backwards. */
+	periodMs: number;
+	/** Start position on the circle, as a fraction of one turn. */
+	phase: number;
+	/** Index into SATELLITE_GLYPHS. */
+	body: number;
+	/** Number of trail marks behind the body. */
+	trail: number;
+}
+
+/**
+ * The grid leaves about a tenth of a radius outside the disc, so an orbit wider
+ * than that would run off the edge of the frame. These all stay inside it.
+ */
+const SATELLITES: readonly Orbit[] = [
+	{ radius: 1.06, inclination: 0.3, node: 0.35, periodMs: 8200, phase: 0.0, body: 0, trail: 2 },
+	{ radius: 1.1, inclination: -0.55, node: 1.25, periodMs: 13500, phase: 0.4, body: 1, trail: 2 },
+	{ radius: 1.08, inclination: 0.7, node: 2.6, periodMs: -10400, phase: 0.72, body: 0, trail: 1 },
+	{ radius: 1.04, inclination: -0.2, node: -0.9, periodMs: 17800, phase: 0.15, body: 0, trail: 2 }
+];
 
 export interface GlobeOptions {
 	/** Rotation around the polar axis, in radians. */
@@ -212,6 +115,8 @@ export interface GlobeOptions {
 	titleProgress?: number;
 	/** Changes the scrambled characters between one title and the next. */
 	seed?: number;
+	/** Time since the animation started, in milliseconds. Moves the satellites. */
+	time?: number;
 }
 
 export interface GlobeFrame {
@@ -221,8 +126,20 @@ export interface GlobeFrame {
 	land: string;
 	/** Meridians and parallels, cut out of the surface. */
 	graticule: string;
+	/** Satellites in orbit, hidden while they pass behind the globe. */
+	satellites: string;
 	/** Title and subtitle, cut out of every other layer. */
 	label: string;
+}
+
+/** Stars and the glow round the disc. Split so each layer gets its own brightness. */
+export interface Backdrop {
+	/** Glow just outside the disc. */
+	haze: string;
+	/** Faint stars. */
+	dimStars: string;
+	/** Bright stars. */
+	brightStars: string;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -310,8 +227,10 @@ function stampLabel(label: string[], below: string[][], row: number, text: strin
  * Renders the still backdrop: stars and the glow around the disc. Neither depends
  * on the rotation, so this runs once.
  */
-export function renderBackdrop(): string {
-	const grid: string[] = new Array(GLOBE_COLS * GLOBE_ROWS).fill(' ');
+export function renderBackdrop(): Backdrop {
+	const haze: string[] = new Array(CELL_COUNT).fill(' ');
+	const dimStars: string[] = new Array(CELL_COUNT).fill(' ');
+	const brightStars: string[] = new Array(CELL_COUNT).fill(' ');
 	const haloOuter = (1 + HALO_DEPTH) * (1 + HALO_DEPTH);
 
 	for (let row = 0; row < GLOBE_ROWS; row++) {
@@ -320,22 +239,82 @@ export function renderBackdrop(): string {
 			const x = (col - CENTER_X) / RADIUS_X;
 			const distance = x * x + y * y;
 			if (distance <= 1) continue;
+			const cell = row * GLOBE_COLS + col;
 
 			if (distance <= haloOuter) {
 				const rim = Math.sqrt(distance);
 				const fade = 1 - (rim - 1) / HALO_DEPTH;
 				const lit = Math.max(0, (x * LIGHT_X - y * LIGHT_Y) / rim);
 				const glow = fade * (0.3 + 0.7 * lit);
-				if (glow >= 0.18) grid[row * GLOBE_COLS + col] = glow > 0.55 ? HALO_RAMP[1] : HALO_RAMP[0];
+				if (glow >= 0.18) haze[cell] = glow > 0.55 ? HALO_RAMP[1] : HALO_RAMP[0];
 				continue;
 			}
 
+			// One roll per cell picks both the star and its brightness, so the sky
+			// keeps the same pattern on the server and in the browser.
 			const roll = hash2(col, row);
-			if (roll > 0.026) continue;
-			grid[row * GLOBE_COLS + col] = roll < 0.002 ? '*' : roll < 0.009 ? '+' : '.';
+			if (roll < 0.0036) brightStars[cell] = BRIGHT_STARS[1];
+			else if (roll < 0.0085) brightStars[cell] = BRIGHT_STARS[0];
+			else if (roll < 0.0125) brightStars[cell] = BRIGHT_STARS[2];
+			else if (roll < 0.0455) dimStars[cell] = DIM_STARS[0];
+			else if (roll < 0.065) dimStars[cell] = DIM_STARS[1];
 		}
 	}
-	return gridToString(grid);
+
+	return {
+		haze: gridToString(haze),
+		dimStars: gridToString(dimStars),
+		brightStars: gridToString(brightStars)
+	};
+}
+
+/**
+ * Draws the satellites and clears the same cells in the layers below. A satellite
+ * that passes behind the disc is left out, so it looks like it goes round the globe.
+ */
+function stampSatellites(
+	layer: string[],
+	below: string[][],
+	time: number,
+	pitch: number
+): void {
+	const sinPitch = Math.sin(pitch);
+	const cosPitch = Math.cos(pitch);
+
+	for (const orbit of SATELLITES) {
+		const lead = (time / orbit.periodMs + orbit.phase) * 2 * Math.PI;
+		const sinNode = Math.sin(orbit.node);
+		const cosNode = Math.cos(orbit.node);
+		const sinTilt = Math.sin(orbit.inclination);
+		const cosTilt = Math.cos(orbit.inclination);
+
+		// The body first, then the trail, so a trail mark never overwrites the body.
+		for (let step = 0; step <= orbit.trail; step++) {
+			const travel = lead - step * TRAIL_GAP;
+			const flatX = Math.cos(travel) * orbit.radius;
+			const flatZ = Math.sin(travel) * orbit.radius;
+
+			// Tilt the orbit plane, turn it, then tip the whole scene with the pointer.
+			const tiltedY = -flatZ * sinTilt;
+			const tiltedZ = flatZ * cosTilt;
+			const worldX = flatX * cosNode + tiltedZ * sinNode;
+			const worldZ = -flatX * sinNode + tiltedZ * cosNode;
+			const viewY = tiltedY * cosPitch - worldZ * sinPitch;
+			const viewZ = tiltedY * sinPitch + worldZ * cosPitch;
+
+			// Behind the globe and inside its outline, so the globe hides it.
+			if (viewZ < 0 && worldX * worldX + viewY * viewY <= 1) continue;
+
+			const col = Math.round(CENTER_X + worldX * RADIUS_X);
+			const row = Math.round(CENTER_Y - viewY * RADIUS_Y);
+			if (col < 0 || col >= GLOBE_COLS || row < 0 || row >= GLOBE_ROWS) continue;
+
+			const cell = row * GLOBE_COLS + col;
+			if (layer[cell] !== ' ') continue;
+			layer[cell] = step === 0 ? SATELLITE_GLYPHS[orbit.body] : SATELLITE_TRAIL[step - 1];
+			for (const other of below) other[cell] = ' ';
+		}
+	}
 }
 
 /** Renders one globe frame as stacked layers. */
@@ -347,12 +326,14 @@ export function renderGlobe(options: GlobeOptions): GlobeFrame {
 		title,
 		subtitle,
 		titleProgress = 1,
-		seed = 0
+		seed = 0,
+		time = 0
 	} = options;
 
 	const ocean: string[] = new Array(CELL_COUNT).fill(' ');
 	const land: string[] = new Array(CELL_COUNT).fill(' ');
 	const graticule: string[] = new Array(CELL_COUNT).fill(' ');
+	const satellites: string[] = new Array(CELL_COUNT).fill(' ');
 	const label: string[] = new Array(CELL_COUNT).fill(' ');
 
 	const { onDisc, meridianIndex, parallelIndex, nearPole, shade: shadeBuffer } = scratch;
@@ -418,12 +399,14 @@ export function renderGlobe(options: GlobeOptions): GlobeFrame {
 				0,
 				MAP_ROWS - 1
 			);
-			const isLand = LAND[mapRow * MAP_COLS + mapCol] === 1;
+			const isLand = LAND_MASK[mapRow * MAP_COLS + mapCol] === 1;
 			const ramp = isLand ? LAND_RAMP : OCEAN_RAMP;
 
-			// Breaks up the flat look of a large continent. Tied to the map cell, so the
+			// Breaks up the flat look of a large continent. Tied to the map patch, so the
 			// pattern turns with the globe instead of crawling across the screen.
-			const relief = isLand ? (hash2(mapCol, mapRow) - 0.5) * 0.12 : 0;
+			const relief = isLand
+				? (hash2(Math.floor(mapCol / RELIEF_PATCH), Math.floor(mapRow / RELIEF_PATCH)) - 0.5) * 0.12
+				: 0;
 			const index = clamp(
 				Math.floor(clamp(shade + relief, 0, 1) * ramp.length),
 				0,
@@ -471,7 +454,9 @@ export function renderGlobe(options: GlobeOptions): GlobeFrame {
 		}
 	}
 
-	const below = [ocean, land, graticule];
+	stampSatellites(satellites, [ocean, land, graticule], time, pitch);
+
+	const below = [ocean, land, graticule, satellites];
 	stampLabel(label, below, Math.round(CENTER_Y) - 1, morphText(title, titleProgress, seed));
 	stampLabel(label, below, Math.round(CENTER_Y) + 2, subtitle);
 
@@ -479,6 +464,7 @@ export function renderGlobe(options: GlobeOptions): GlobeFrame {
 		ocean: gridToString(ocean),
 		land: gridToString(land),
 		graticule: gridToString(graticule),
+		satellites: gridToString(satellites),
 		label: gridToString(label)
 	};
 }
