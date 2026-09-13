@@ -64,7 +64,31 @@ layer and makes the browser fall back to grey smoothing.
 Measured cost: about 1.05 ms per frame for 112x56 cells, against a 33 ms budget
 at 30 frames per second.
 
+## Round three: Docker and Coolify
+
+- [x] Replace `adapter-auto` with `@sveltejs/adapter-node`
+- [x] Pin `packageManager` to `pnpm@12.4.1`, so the image builds with the same pnpm
+- [x] `Dockerfile`, three stages on `node:24-alpine`, runs as user `node`
+- [x] `.dockerignore`
+- [x] `docker-compose.yaml` with `SERVICE_FQDN_WEB_3000`, no published port
+- [x] Health check on `/` with `wget`
+- [x] `pnpm run build` passes with the new adapter
+- [x] `docker build` passes, container answers `200` on port 3000
+
+### Notes
+
+The container needs no production dependencies today, because every package is
+a devDependency and the adapter bundles those into `build/`. The `deps` stage
+ends with `mkdir -p node_modules`, so the `COPY --from=deps` stays valid while
+the directory is empty.
+
+Coolify routes by domain, so the Compose file publishes no host port. Set the
+domain on the `web` service as `https://raqz.pl:3000`; the port after the colon
+only tells the proxy where to go inside the container.
+
+Verified: image 161 MB, `curl http://127.0.0.1:3100/` returned `200`, the SSR
+HTML held 5 `<pre>` layers, `raqz.pl`, `raqz.dev` and `Mariusz Rakus`.
+
 ## Next (not in scope)
 
-- Choose the production adapter instead of `adapter-auto`.
 - Add a domain switch, so `raqz.dev` can show a different default title.

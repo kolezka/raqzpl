@@ -1,0 +1,16 @@
+.git
+.github
+.ai
+.vscode
+node_modules
+build
+.svelte-kit
+.env
+.env.*
+!.env.example
+Dockerfile
+.dockerignore
+docker-compose.yaml
+README.md
+*.log
+.DS_Store

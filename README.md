@@ -28,6 +28,8 @@ pnpm run check     # svelte-check and TypeScript
 | `src/routes/+layout.svelte`            | Global colours and font                        |
 | `src/routes/+layout.ts`                | SSR flags                                      |
 | `vite.config.ts`                       | SvelteKit plugin and adapter                   |
+| `Dockerfile`                           | Three stage build of the Node server image     |
+| `docker-compose.yaml`                  | Coolify deployment                             |
 
 ## Rendering
 
@@ -74,6 +76,46 @@ twinkle and the scramble. The title still changes.
 
 ## Deployment
 
-The project uses `@sveltejs/adapter-auto`. Replace it with the adapter of the
-target host (`adapter-node`, `adapter-vercel`, `adapter-cloudflare`) in
-`vite.config.ts`.
+The project uses `@sveltejs/adapter-node`, so the build is a Node server that
+starts with `node build` and listens on `PORT` (3000 by default).
+
+### Docker
+
+```bash
+docker build -t raqzpl .
+docker run --rm -p 3000:3000 raqzpl     # http://localhost:3000
+```
+
+The image builds in three stages on `node:24-alpine`: one stage builds the site,
+one installs the production dependencies, and the last one holds only `build/`,
+`node_modules/` and `package.json`. It runs as the `node` user. The result is
+about 161 MB.
+
+The adapter bundles the `devDependencies` into `build/`. Only packages under
+`dependencies` go into the image, and there are none today.
+
+### Coolify
+
+`docker-compose.yaml` is written for Coolify.
+
+1. Create a new resource, source **Git repository**, build pack **Docker
+   Compose**.
+2. Base Directory `/`, Docker Compose Location `/docker-compose.yaml`.
+3. Open the `web` service and set the domain, for example
+   `https://raqz.pl:3000`. The `:3000` tells the proxy which port inside the
+   container to use. Visitors still use port 443.
+4. Deploy.
+
+Coolify writes the domain into `SERVICE_FQDN_WEB_3000`, and the Compose file
+passes it to SvelteKit as `ORIGIN`. Add `raqz.dev` as a second domain on the
+same service.
+
+The Compose file publishes no host port, because Coolify routes by domain
+through its proxy. The health check calls `/` every 30 seconds with `wget`.
+
+| Variable          | Default              | Purpose                          |
+| ----------------- | -------------------- | -------------------------------- |
+| `PORT`            | `3000`               | Port inside the container        |
+| `HOST`            | `0.0.0.0`            | Listening interface              |
+| `ORIGIN`          | from Coolify         | Public URL, used for form checks |
+| `BODY_SIZE_LIMIT` | `512K`               | Largest request body             |

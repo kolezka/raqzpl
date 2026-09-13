@@ -1,0 +1,21 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      # Coolify writes the domain of the service into this variable. The suffix
+      # 3000 is the port inside the container, so the proxy knows where to go.
+      - SERVICE_FQDN_WEB_3000
+      # SvelteKit needs the public URL to check the origin of a form post.
+      - ORIGIN=https://${SERVICE_FQDN_WEB_3000:-raqz.pl}
+      - BODY_SIZE_LIMIT=512K
+    expose:
+      - '3000'
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://127.0.0.1:3000/']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
