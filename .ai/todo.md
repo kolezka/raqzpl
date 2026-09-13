@@ -32,6 +32,38 @@ Verified against the production build on http://localhost:4173:
 - Background `rgb(0, 0, 0)`, text `rgb(255, 255, 255)`.
 - Cell height divided by cell width is 2.0, which the renderer expects.
 
+## Round two: a stronger 3D look
+
+- [x] Split the frame into stacked layers: backdrop, ocean, graticule, land, label
+- [x] Axial tilt of 23.44 degrees
+- [x] Meridians and parallels, one cell wide and continuous
+- [x] Specular highlight, limb darkening, halo outside the disc
+- [x] Star field behind the globe, with a slow twinkle
+- [x] Pointer parallax, eased
+- [x] Title settles out of random glyphs
+- [x] Grid raised from 96x48 to 112x56
+- [x] `pnpm run check` — 0 errors, 0 warnings
+- [x] Verified in the browser against the production build
+
+### Notes
+
+The first attempt marked a grid line by the distance from the exact angle. Lines
+broke into dots, because the threshold could not follow the foreshortening near
+the limb and the poles. The fix compares the grid index of neighbouring cells:
+a cell is on a line when it and a neighbour straddle exactly one line. Lines are
+now continuous and never wider than one cell.
+
+Land and water fought for the same brightness range, so continents washed out.
+They now sit in separate layers with different opacity, which separates them by
+colour instead of by character density.
+
+Small white glyphs picked up colour fringes from subpixel smoothing. The fix is
+`transform: translateZ(0)` on each layer, which puts it on its own composited
+layer and makes the browser fall back to grey smoothing.
+
+Measured cost: about 1.05 ms per frame for 112x56 cells, against a 33 ms budget
+at 30 frames per second.
+
 ## Next (not in scope)
 
 - Choose the production adapter instead of `adapter-auto`.
