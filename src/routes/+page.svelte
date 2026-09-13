@@ -19,7 +19,9 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		min-height: 100dvh;
+		/* Fixed height, not a minimum: the grid is rounded up to whole characters, so it
+		   is a little taller than the window and must be cropped, not scrolled. */
+		height: 100dvh;
 		overflow: hidden;
 	}
 </style>
