@@ -4,7 +4,10 @@
 
 <svelte:head>
 	<title>raqz.pl — Mariusz Rakus</title>
-	<meta name="description" content="raqz.pl / raqz.dev — Mariusz Rakus" />
+	<meta
+		name="description"
+		content="raqz.pl, raqz.dev, raqz.link, raqz.app, raqz.contact — Mariusz Rakus"
+	/>
 </svelte:head>
 
 <main>

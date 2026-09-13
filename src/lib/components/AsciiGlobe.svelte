@@ -16,7 +16,7 @@
 	}
 
 	let {
-		titles = ['raqz.pl', 'raqz.dev'],
+		titles = ['raqz.pl', 'raqz.dev', 'raqz.link', 'raqz.app', 'raqz.contact'],
 		subtitle = 'Mariusz Rakus',
 		turnMs = 28000,
 		swapMs = 3600,

@@ -5,8 +5,12 @@ Base repository for the personal site of Mariusz Rakus.
 Stack: SvelteKit 2 (Svelte 5, runes), TypeScript, Vite, server side rendering.
 
 The home page shows a black screen with a white ASCII globe that turns. The title
-inside the globe changes between `raqz.pl` and `raqz.dev`, with `Mariusz Rakus`
-below it.
+inside the globe steps through the domains, with `Mariusz Rakus` below it:
+`raqz.pl`, `raqz.dev`, `raqz.link`, `raqz.app`, `raqz.contact`. Each one stays
+for 3.6 seconds, so the full round takes 18 seconds.
+
+To change the list, pass the `titles` property to `AsciiGlobe` in
+`src/routes/+page.svelte`.
 
 ## Commands
 
@@ -107,8 +111,8 @@ The adapter bundles the `devDependencies` into `build/`. Only packages under
 4. Deploy.
 
 Coolify writes the domain into `SERVICE_FQDN_WEB_3000`, and the Compose file
-passes it to SvelteKit as `ORIGIN`. Add `raqz.dev` as a second domain on the
-same service.
+passes it to SvelteKit as `ORIGIN`. Add `raqz.dev`, `raqz.link`, `raqz.app` and
+`raqz.contact` as further domains on the same service.
 
 The Compose file publishes no host port, because Coolify routes by domain
 through its proxy. The health check calls `/` every 30 seconds with `wget`.
