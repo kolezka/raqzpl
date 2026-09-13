@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { AXIAL_TILT, renderBackdrop, renderGlobe } from '$lib/globe';
+	import { AXIAL_TILT, DEFAULT_COLS, DEFAULT_ROWS, renderBackdrop, renderGlobe } from '$lib/globe';
 
 	interface Props {
 		/** Titles shown in the middle of the globe, one after the other. */
@@ -30,8 +30,16 @@
 	const MAX_PITCH = 0.3;
 	const MAX_YAW = 0.32;
 
-	/** Stars and the glow round the disc never move, so they render once. */
-	const backdrop = renderBackdrop();
+	/** Characters in the probe line. Only used to measure one character cell. */
+	const PROBE_LENGTH = 20;
+
+	/** Grid size. The server uses the default, the browser fits it to the window. */
+	let cols = $state(DEFAULT_COLS);
+	let rows = $state(DEFAULT_ROWS);
+	let probe: HTMLPreElement | undefined = $state();
+
+	/** Stars and the glow round the disc only change when the grid does. */
+	const backdrop = $derived(renderBackdrop(cols, rows));
 
 	let angle = $state(0);
 	let pitch = $state(0);
@@ -50,7 +58,9 @@
 			subtitle,
 			titleProgress,
 			seed,
-			time: clock
+			time: clock,
+			cols,
+			rows
 		})
 	);
 
@@ -63,6 +73,17 @@
 		let targetYaw = 0;
 		let easedPitch = 0;
 		let easedYaw = 0;
+
+		// The grid covers the whole window: stars reach both edges on a wide screen, and
+		// the globe, which keeps nine tenths of the grid height, fills a tall phone.
+		const fit = () => {
+			if (!probe) return;
+			const cell = probe.getBoundingClientRect();
+			const cellWidth = cell.width / PROBE_LENGTH;
+			if (cellWidth < 1 || cell.height < 1) return;
+			cols = Math.ceil(window.innerWidth / cellWidth);
+			rows = Math.ceil(window.innerHeight / cell.height);
+		};
 
 		const onPointerMove = (event: PointerEvent) => {
 			if (motion.matches) return;
@@ -95,16 +116,20 @@
 			titleProgress = Math.min(1, (elapsed - cycle * swapMs) / morphMs);
 		};
 
+		fit();
+		window.addEventListener('resize', fit, { passive: true });
 		window.addEventListener('pointermove', onPointerMove, { passive: true });
 		request = requestAnimationFrame(tick);
 
 		return () => {
 			cancelAnimationFrame(request);
+			window.removeEventListener('resize', fit);
 			window.removeEventListener('pointermove', onPointerMove);
 		};
 	});
 </script>
 
+<pre class="probe" aria-hidden="true" bind:this={probe}>{'M'.repeat(PROBE_LENGTH)}</pre>
 <div class="stack">
 	<pre class="haze" aria-hidden="true">{backdrop.haze}</pre>
 	<pre class="dim-stars" aria-hidden="true">{backdrop.dimStars}</pre>
@@ -123,24 +148,37 @@
 		isolation: isolate;
 	}
 
-	/* Soft bloom behind the globe, on the lit side. */
+	/* Soft bloom behind the globe, on the lit side. Sized in viewport height, like the
+	   globe itself, so it stays on the disc instead of spreading over the whole sky. */
 	.stack::before {
 		content: '';
 		grid-area: 1 / 1;
 		z-index: -1;
 		background: radial-gradient(
-			circle at 40% 34%,
+			circle 42dvh at 47% 42%,
 			rgba(255, 255, 255, 0.1) 0%,
-			rgba(255, 255, 255, 0) 46%
+			rgba(255, 255, 255, 0) 62%
 		);
 	}
 
+	/* Measures one character cell. Out of the flow and invisible. */
+	.probe {
+		position: absolute;
+		top: 0;
+		left: 0;
+		visibility: hidden;
+		pointer-events: none;
+	}
+
+	.probe,
 	.stack > pre {
 		grid-area: 1 / 1;
 		margin: 0;
 		/* The renderer assumes a cell twice as high as it is wide. */
 		font-family: ui-monospace, 'SFMono-Regular', 'Menlo', 'Consolas', monospace;
-		font-size: clamp(2px, 1.42vmin, 20px);
+		/* Only sets how fine the drawing is. The globe size follows the window height,
+		   because the grid does. The lower end keeps the title readable on a phone. */
+		font-size: clamp(9px, 1.35vmin, 18px);
 		line-height: 1.2;
 		letter-spacing: 0;
 		white-space: pre;

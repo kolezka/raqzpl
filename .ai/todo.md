@@ -89,6 +89,30 @@ only tells the proxy where to go inside the container.
 Verified: image 161 MB, `curl http://127.0.0.1:3100/` returned `200`, the SSR
 HTML held 5 `<pre>` layers, `raqz.pl`, `raqz.dev` and `Mariusz Rakus`.
 
+## Round four: a grid that covers the window
+
+- [x] `globe.ts` takes the grid size: `Layout` holds the centre, the radii and the
+      scratch buffers, and is rebuilt only when the size changes
+- [x] `renderBackdrop(cols, rows)` and `renderGlobe({ ..., cols, rows })`
+- [x] Star rolls count from the middle of the grid, so the sky keeps its pattern
+      when the window is resized
+- [x] Row zero keeps its trailing spaces, so every layer is as wide as the grid
+- [x] `AsciiGlobe` measures one character cell with a hidden probe line and fits
+      the grid to the window, on mount and on every resize
+- [x] Font size now only sets how fine the drawing is: `clamp(9px, 1.35vmin, 18px)`
+- [x] `main` has a fixed `100dvh` height, so the extra part of the grid is cropped
+- [ ] `pnpm run check` — 0 errors, 0 warnings
+- [ ] Verified in the browser: wide window and a phone size
+
+### Notes
+
+The disc keeps nine tenths of the grid height, and the grid is as tall as the
+window, so the globe is about 90 percent of the window height on every screen.
+On a wide screen the grid is much wider than the disc, which is what puts stars
+from edge to edge. On a phone the disc is wider than the grid, so the sides fall
+outside it: that is the zoom, and it costs nothing because those cells are never
+drawn.
+
 ## Next (not in scope)
 
 - Add a domain switch, so `raqz.dev` can show a different default title.

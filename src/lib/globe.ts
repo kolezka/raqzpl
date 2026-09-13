@@ -11,8 +11,16 @@
 
 import { LAND_MASK, MAP_COLS, MAP_ROWS } from './coastlines.ts';
 
-export const GLOBE_COLS = 112;
-export const GLOBE_ROWS = 56;
+/**
+ * Grid used for the server frame, before the browser knows the viewport. The client
+ * swaps it for a grid that covers the whole window.
+ */
+export const DEFAULT_COLS = 112;
+export const DEFAULT_ROWS = 56;
+
+/** Keeps an unusual font size from asking for a grid with millions of cells. */
+const MAX_COLS = 640;
+const MAX_ROWS = 240;
 
 /** Cell height divided by cell width. The CSS line-height must match this. */
 const CELL_ASPECT = 2;
@@ -66,10 +74,60 @@ const GRID_STEP = Math.PI / 6;
  */
 const RELIEF_PATCH = 4;
 
-const CENTER_X = (GLOBE_COLS - 1) / 2;
-const CENTER_Y = (GLOBE_ROWS - 1) / 2;
-const RADIUS_Y = CENTER_Y * 0.9;
-const RADIUS_X = RADIUS_Y * CELL_ASPECT;
+/**
+ * One grid size, with the disc placed in it and the scratch buffers it needs.
+ *
+ * The disc always keeps nine tenths of the grid height, so the globe follows the
+ * window height on every screen. On a narrow screen the disc is wider than the grid
+ * and the sides simply fall outside it, which is what the zoom on a phone looks like.
+ */
+interface Layout {
+	cols: number;
+	rows: number;
+	cellCount: number;
+	centerX: number;
+	centerY: number;
+	radiusX: number;
+	radiusY: number;
+	/** Scratch buffers, reused between frames. */
+	onDisc: Uint8Array;
+	meridianIndex: Int16Array;
+	parallelIndex: Int16Array;
+	nearPole: Uint8Array;
+	shade: Float32Array;
+}
+
+function createLayout(cols: number, rows: number): Layout {
+	const cellCount = cols * rows;
+	const centerY = (rows - 1) / 2;
+	const radiusY = centerY * 0.9;
+	return {
+		cols,
+		rows,
+		cellCount,
+		centerX: (cols - 1) / 2,
+		centerY,
+		radiusX: radiusY * CELL_ASPECT,
+		radiusY,
+		onDisc: new Uint8Array(cellCount),
+		meridianIndex: new Int16Array(cellCount),
+		parallelIndex: new Int16Array(cellCount),
+		nearPole: new Uint8Array(cellCount),
+		shade: new Float32Array(cellCount)
+	};
+}
+
+let layout = createLayout(DEFAULT_COLS, DEFAULT_ROWS);
+
+/** Returns the layout for a grid size, building it only when the size changes. */
+function useLayout(cols: number, rows: number): Layout {
+	const wantCols = clamp(Math.round(cols), 8, MAX_COLS);
+	const wantRows = clamp(Math.round(rows), 8, MAX_ROWS);
+	if (layout.cols !== wantCols || layout.rows !== wantRows) {
+		layout = createLayout(wantCols, wantRows);
+	}
+	return layout;
+}
 
 /** One satellite on a circular orbit. */
 interface Orbit {
@@ -90,8 +148,9 @@ interface Orbit {
 }
 
 /**
- * The grid leaves about a tenth of a radius outside the disc, so an orbit wider
- * than that would run off the edge of the frame. These all stay inside it.
+ * The grid leaves about a tenth of a radius above and below the disc, so an orbit
+ * wider than that leaves the frame at the top. These all stay inside it. On a narrow
+ * screen the sides of an orbit go off the grid, together with the sides of the globe.
  */
 const SATELLITES: readonly Orbit[] = [
 	{ radius: 1.06, inclination: 0.3, node: 0.35, periodMs: 8200, phase: 0.0, body: 0, trail: 2 },
@@ -117,6 +176,10 @@ export interface GlobeOptions {
 	seed?: number;
 	/** Time since the animation started, in milliseconds. Moves the satellites. */
 	time?: number;
+	/** Grid width in characters. Defaults to the server grid. */
+	cols?: number;
+	/** Grid height in characters. Defaults to the server grid. */
+	rows?: number;
 }
 
 export interface GlobeFrame {
@@ -146,19 +209,8 @@ function clamp(value: number, min: number, max: number): number {
 	return value < min ? min : value > max ? max : value;
 }
 
-const CELL_COUNT = GLOBE_COLS * GLOBE_ROWS;
-
 /** Number of meridians. The index of a cell wraps from this value back to 0. */
 const MERIDIAN_COUNT = Math.round((2 * Math.PI) / GRID_STEP);
-
-/** Scratch buffers, reused between frames. The output stays a pure function of the input. */
-const scratch = {
-	onDisc: new Uint8Array(CELL_COUNT),
-	meridianIndex: new Int16Array(CELL_COUNT),
-	parallelIndex: new Int16Array(CELL_COUNT),
-	nearPole: new Uint8Array(CELL_COUNT),
-	shade: new Float32Array(CELL_COUNT)
-};
 
 /**
  * True when two neighbouring cells sit on opposite sides of exactly one grid line.
@@ -196,13 +248,13 @@ export function morphText(text: string, progress: number, seed: number): string 
 	return out;
 }
 
-function gridToString(grid: string[]): string {
-	const lines: string[] = new Array(GLOBE_ROWS);
-	for (let row = 0; row < GLOBE_ROWS; row++) {
-		lines[row] = grid
-			.slice(row * GLOBE_COLS, (row + 1) * GLOBE_COLS)
-			.join('')
-			.replace(/\s+$/, '');
+function gridToString(grid: string[], { cols, rows }: Layout): string {
+	const lines: string[] = new Array(rows);
+	for (let row = 0; row < rows; row++) {
+		const line = grid.slice(row * cols, (row + 1) * cols).join('');
+		// Row zero keeps its trailing spaces. That makes every layer exactly as wide as
+		// the grid, so the layers stay lined up and the block stays centred.
+		lines[row] = row === 0 ? line : line.replace(/\s+$/, '');
 	}
 	return lines.join('\n');
 }
@@ -211,35 +263,47 @@ function gridToString(grid: string[]): string {
  * Writes one centred line into the label layer and clears the same cells in the
  * layers below, so the text always sits on empty space.
  */
-function stampLabel(label: string[], below: string[][], row: number, text: string): void {
+function stampLabel(
+	label: string[],
+	below: string[][],
+	row: number,
+	text: string,
+	{ cols }: Layout
+): void {
 	const padded = `  ${text}  `;
-	const start = Math.round((GLOBE_COLS - padded.length) / 2);
+	const start = Math.round((cols - padded.length) / 2);
 	for (let i = 0; i < padded.length; i++) {
 		const col = start + i;
-		if (col < 0 || col >= GLOBE_COLS) continue;
-		const cell = row * GLOBE_COLS + col;
+		if (col < 0 || col >= cols) continue;
+		const cell = row * cols + col;
 		label[cell] = padded[i];
 		for (const layer of below) layer[cell] = ' ';
 	}
 }
 
 /**
- * Renders the still backdrop: stars and the glow around the disc. Neither depends
- * on the rotation, so this runs once.
+ * Renders the still backdrop: stars and the glow around the disc. Neither depends on
+ * the rotation, so this only runs again when the grid size changes.
  */
-export function renderBackdrop(): Backdrop {
-	const haze: string[] = new Array(CELL_COUNT).fill(' ');
-	const dimStars: string[] = new Array(CELL_COUNT).fill(' ');
-	const brightStars: string[] = new Array(CELL_COUNT).fill(' ');
+export function renderBackdrop(cols = DEFAULT_COLS, rows = DEFAULT_ROWS): Backdrop {
+	const grid = useLayout(cols, rows);
+	const { centerX, centerY, radiusX, radiusY, cellCount } = grid;
+	const haze: string[] = new Array(cellCount).fill(' ');
+	const dimStars: string[] = new Array(cellCount).fill(' ');
+	const brightStars: string[] = new Array(cellCount).fill(' ');
 	const haloOuter = (1 + HALO_DEPTH) * (1 + HALO_DEPTH);
+	// Star rolls count from the middle of the grid, so the sky keeps the same pattern
+	// around the globe when the window changes size.
+	const originX = Math.round(centerX);
+	const originY = Math.round(centerY);
 
-	for (let row = 0; row < GLOBE_ROWS; row++) {
-		const y = (row - CENTER_Y) / RADIUS_Y;
-		for (let col = 0; col < GLOBE_COLS; col++) {
-			const x = (col - CENTER_X) / RADIUS_X;
+	for (let row = 0; row < grid.rows; row++) {
+		const y = (row - centerY) / radiusY;
+		for (let col = 0; col < grid.cols; col++) {
+			const x = (col - centerX) / radiusX;
 			const distance = x * x + y * y;
 			if (distance <= 1) continue;
-			const cell = row * GLOBE_COLS + col;
+			const cell = row * grid.cols + col;
 
 			if (distance <= haloOuter) {
 				const rim = Math.sqrt(distance);
@@ -252,7 +316,7 @@ export function renderBackdrop(): Backdrop {
 
 			// One roll per cell picks both the star and its brightness, so the sky
 			// keeps the same pattern on the server and in the browser.
-			const roll = hash2(col, row);
+			const roll = hash2(col - originX, row - originY);
 			if (roll < 0.0036) brightStars[cell] = BRIGHT_STARS[1];
 			else if (roll < 0.0085) brightStars[cell] = BRIGHT_STARS[0];
 			else if (roll < 0.0125) brightStars[cell] = BRIGHT_STARS[2];
@@ -262,9 +326,9 @@ export function renderBackdrop(): Backdrop {
 	}
 
 	return {
-		haze: gridToString(haze),
-		dimStars: gridToString(dimStars),
-		brightStars: gridToString(brightStars)
+		haze: gridToString(haze, grid),
+		dimStars: gridToString(dimStars, grid),
+		brightStars: gridToString(brightStars, grid)
 	};
 }
 
@@ -276,8 +340,10 @@ function stampSatellites(
 	layer: string[],
 	below: string[][],
 	time: number,
-	pitch: number
+	pitch: number,
+	grid: Layout
 ): void {
+	const { cols, rows, centerX, centerY, radiusX, radiusY } = grid;
 	const sinPitch = Math.sin(pitch);
 	const cosPitch = Math.cos(pitch);
 
@@ -305,11 +371,11 @@ function stampSatellites(
 			// Behind the globe and inside its outline, so the globe hides it.
 			if (viewZ < 0 && worldX * worldX + viewY * viewY <= 1) continue;
 
-			const col = Math.round(CENTER_X + worldX * RADIUS_X);
-			const row = Math.round(CENTER_Y - viewY * RADIUS_Y);
-			if (col < 0 || col >= GLOBE_COLS || row < 0 || row >= GLOBE_ROWS) continue;
+			const col = Math.round(centerX + worldX * radiusX);
+			const row = Math.round(centerY - viewY * radiusY);
+			if (col < 0 || col >= cols || row < 0 || row >= rows) continue;
 
-			const cell = row * GLOBE_COLS + col;
+			const cell = row * cols + col;
 			if (layer[cell] !== ' ') continue;
 			layer[cell] = step === 0 ? SATELLITE_GLYPHS[orbit.body] : SATELLITE_TRAIL[step - 1];
 			for (const other of below) other[cell] = ' ';
@@ -327,16 +393,21 @@ export function renderGlobe(options: GlobeOptions): GlobeFrame {
 		subtitle,
 		titleProgress = 1,
 		seed = 0,
-		time = 0
+		time = 0,
+		cols = DEFAULT_COLS,
+		rows = DEFAULT_ROWS
 	} = options;
 
-	const ocean: string[] = new Array(CELL_COUNT).fill(' ');
-	const land: string[] = new Array(CELL_COUNT).fill(' ');
-	const graticule: string[] = new Array(CELL_COUNT).fill(' ');
-	const satellites: string[] = new Array(CELL_COUNT).fill(' ');
-	const label: string[] = new Array(CELL_COUNT).fill(' ');
+	const grid = useLayout(cols, rows);
+	const { cellCount, centerX, centerY, radiusX, radiusY } = grid;
 
-	const { onDisc, meridianIndex, parallelIndex, nearPole, shade: shadeBuffer } = scratch;
+	const ocean: string[] = new Array(cellCount).fill(' ');
+	const land: string[] = new Array(cellCount).fill(' ');
+	const graticule: string[] = new Array(cellCount).fill(' ');
+	const satellites: string[] = new Array(cellCount).fill(' ');
+	const label: string[] = new Array(cellCount).fill(' ');
+
+	const { onDisc, meridianIndex, parallelIndex, nearPole, shade: shadeBuffer } = grid;
 	onDisc.fill(0);
 
 	// Negated, so a growing angle turns the globe eastward like the Earth.
@@ -348,10 +419,10 @@ export function renderGlobe(options: GlobeOptions): GlobeFrame {
 	const cosRoll = Math.cos(roll);
 
 	// Pass one: shade the surface and record which grid cell each point falls in.
-	for (let row = 0; row < GLOBE_ROWS; row++) {
-		const y = (row - CENTER_Y) / RADIUS_Y;
-		for (let col = 0; col < GLOBE_COLS; col++) {
-			const x = (col - CENTER_X) / RADIUS_X;
+	for (let row = 0; row < grid.rows; row++) {
+		const y = (row - centerY) / radiusY;
+		for (let col = 0; col < grid.cols; col++) {
+			const x = (col - centerX) / radiusX;
 			const distance = x * x + y * y;
 			if (distance > 1) continue;
 
@@ -382,7 +453,7 @@ export function renderGlobe(options: GlobeOptions): GlobeFrame {
 				1
 			);
 
-			const cell = row * GLOBE_COLS + col;
+			const cell = row * grid.cols + col;
 			onDisc[cell] = 1;
 			shadeBuffer[cell] = shade;
 			nearPole[cell] = cosLatitude < 0.18 ? 1 : 0;
@@ -418,13 +489,13 @@ export function renderGlobe(options: GlobeOptions): GlobeFrame {
 
 	// Pass two: a cell belongs to the wireframe when it and a neighbour sit on
 	// opposite sides of one grid line. That gives lines exactly one cell wide.
-	for (let row = 0; row < GLOBE_ROWS; row++) {
-		for (let col = 0; col < GLOBE_COLS; col++) {
-			const cell = row * GLOBE_COLS + col;
+	for (let row = 0; row < grid.rows; row++) {
+		for (let col = 0; col < grid.cols; col++) {
+			const cell = row * grid.cols + col;
 			if (!onDisc[cell]) continue;
 
-			const right = col + 1 < GLOBE_COLS ? cell + 1 : -1;
-			const under = row + 1 < GLOBE_ROWS ? cell + GLOBE_COLS : -1;
+			const right = col + 1 < grid.cols ? cell + 1 : -1;
+			const under = row + 1 < grid.rows ? cell + grid.cols : -1;
 			let onLine = false;
 
 			if (!nearPole[cell]) {
@@ -454,17 +525,18 @@ export function renderGlobe(options: GlobeOptions): GlobeFrame {
 		}
 	}
 
-	stampSatellites(satellites, [ocean, land, graticule], time, pitch);
+	stampSatellites(satellites, [ocean, land, graticule], time, pitch, grid);
 
 	const below = [ocean, land, graticule, satellites];
-	stampLabel(label, below, Math.round(CENTER_Y) - 1, morphText(title, titleProgress, seed));
-	stampLabel(label, below, Math.round(CENTER_Y) + 2, subtitle);
+	const middle = Math.round(centerY);
+	stampLabel(label, below, middle - 1, morphText(title, titleProgress, seed), grid);
+	stampLabel(label, below, middle + 2, subtitle, grid);
 
 	return {
-		ocean: gridToString(ocean),
-		land: gridToString(land),
-		graticule: gridToString(graticule),
-		satellites: gridToString(satellites),
-		label: gridToString(label)
+		ocean: gridToString(ocean, grid),
+		land: gridToString(land, grid),
+		graticule: gridToString(graticule, grid),
+		satellites: gridToString(satellites, grid),
+		label: gridToString(label, grid)
 	};
 }
