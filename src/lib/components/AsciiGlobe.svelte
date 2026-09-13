@@ -38,6 +38,8 @@
 	let titleIndex = $state(0);
 	let titleProgress = $state(1);
 	let seed = $state(0);
+	/** Milliseconds since the first frame. Drives the satellites. */
+	let clock = $state(0);
 
 	const frame = $derived(
 		renderGlobe({
@@ -47,7 +49,8 @@
 			title: titles[titleIndex],
 			subtitle,
 			titleProgress,
-			seed
+			seed,
+			time: clock
 		})
 	);
 
@@ -87,6 +90,7 @@
 			easedPitch += (targetPitch - easedPitch) * 0.08;
 			angle = ((elapsed / turnMs) % 1) * 2 * Math.PI + easedYaw;
 			pitch = easedPitch;
+			clock = elapsed;
 			seed = cycle;
 			titleProgress = Math.min(1, (elapsed - cycle * swapMs) / morphMs);
 		};
@@ -102,10 +106,13 @@
 </script>
 
 <div class="stack">
-	<pre class="backdrop" aria-hidden="true">{backdrop}</pre>
+	<pre class="haze" aria-hidden="true">{backdrop.haze}</pre>
+	<pre class="dim-stars" aria-hidden="true">{backdrop.dimStars}</pre>
+	<pre class="bright-stars" aria-hidden="true">{backdrop.brightStars}</pre>
 	<pre class="ocean" aria-hidden="true">{frame.ocean}</pre>
 	<pre class="graticule" aria-hidden="true">{frame.graticule}</pre>
 	<pre class="land" aria-hidden="true">{frame.land}</pre>
+	<pre class="satellites" aria-hidden="true">{frame.satellites}</pre>
 	<pre class="label" aria-hidden="true">{frame.label}</pre>
 </div>
 <p class="reader-only">{titles.join(' / ')} — {subtitle}</p>
@@ -144,9 +151,25 @@
 		transform: translateZ(0);
 	}
 
-	.backdrop {
+	.haze {
 		color: rgba(255, 255, 255, 0.3);
+	}
+
+	.dim-stars {
+		color: rgba(255, 255, 255, 0.42);
 		animation: twinkle 5.5s ease-in-out infinite alternate;
+	}
+
+	/* A second star layer, brighter and on its own beat, so the sky is not flat. */
+	.bright-stars {
+		color: rgba(255, 255, 255, 0.85);
+		text-shadow: 0 0 0.5em rgba(255, 255, 255, 0.35);
+		animation: twinkle 3.3s ease-in-out infinite alternate;
+	}
+
+	.satellites {
+		color: rgba(255, 255, 255, 0.9);
+		text-shadow: 0 0 0.6em rgba(255, 255, 255, 0.45);
 	}
 
 	.ocean {
@@ -191,7 +214,8 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.backdrop {
+		.dim-stars,
+		.bright-stars {
 			animation: none;
 		}
 	}
