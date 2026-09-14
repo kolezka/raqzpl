@@ -10,9 +10,12 @@
  * may overlap freely.
  */
 
-/** Land mask size. One cell is about 1.4 degrees, finer than a globe character. */
-export const MAP_COLS = 256;
-export const MAP_ROWS = 128;
+/**
+ * Land mask size. One cell is about 0.7 degrees. A globe character covers about one
+ * degree at the middle of the disc on a dense grid, so the mask stays finer than it.
+ */
+export const MAP_COLS = 512;
+export const MAP_ROWS = 256;
 
 type Ring = ReadonlyArray<readonly [number, number]>;
 
@@ -941,41 +944,43 @@ const ISLANDS: ReadonlyArray<Ring> = [
 	]
 ];
 
-/** Ray casting test. The ring is a plain list of points, closed implicitly. */
-function ringContains(ring: Ring, lon: number, lat: number): boolean {
-	let inside = false;
-	for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-		const [lonI, latI] = ring[i];
-		const [lonJ, latJ] = ring[j];
-		if (latI > lat === latJ > lat) continue;
-		if (lon < ((lonJ - lonI) * (lat - latI)) / (latJ - latI) + lonI) inside = !inside;
-	}
-	return inside;
-}
-
-/** Fills the cells inside one ring. Only the cells in its bounding box are tested. */
+/**
+ * Fills the cells inside one ring, one row at a time. Each row collects the
+ * longitudes where an edge crosses it, sorts them, and fills every second span.
+ * A cell counts as inside when its centre is. Rings need not be simple: a crossing
+ * ring fills by the even-odd rule, the same as a ray cast from every cell.
+ */
 function fillRing(mask: Uint8Array, ring: Ring, value: number): void {
-	let minLon = 180;
-	let maxLon = -180;
 	let minLat = 90;
 	let maxLat = -90;
-	for (const [lon, lat] of ring) {
-		if (lon < minLon) minLon = lon;
-		if (lon > maxLon) maxLon = lon;
+	for (const [, lat] of ring) {
 		if (lat < minLat) minLat = lat;
 		if (lat > maxLat) maxLat = lat;
 	}
 
-	const firstCol = Math.max(0, Math.floor(((minLon + 180) / 360) * MAP_COLS));
-	const lastCol = Math.min(MAP_COLS - 1, Math.ceil(((maxLon + 180) / 360) * MAP_COLS));
 	const firstRow = Math.max(0, Math.floor(((90 - maxLat) / 180) * MAP_ROWS));
 	const lastRow = Math.min(MAP_ROWS - 1, Math.ceil(((90 - minLat) / 180) * MAP_ROWS));
+	const crossings: number[] = [];
 
 	for (let row = firstRow; row <= lastRow; row++) {
 		const lat = 90 - ((row + 0.5) / MAP_ROWS) * 180;
-		for (let col = firstCol; col <= lastCol; col++) {
-			const lon = -180 + ((col + 0.5) / MAP_COLS) * 360;
-			if (ringContains(ring, lon, lat)) mask[row * MAP_COLS + col] = value;
+		crossings.length = 0;
+		for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+			const [lonI, latI] = ring[i];
+			const [lonJ, latJ] = ring[j];
+			if (latI > lat === latJ > lat) continue;
+			crossings.push(((lonJ - lonI) * (lat - latI)) / (latJ - latI) + lonI);
+		}
+		crossings.sort((a, b) => a - b);
+
+		for (let k = 0; k + 1 < crossings.length; k += 2) {
+			// Cells whose centre lies in [start, end).
+			const firstCol = Math.max(0, Math.ceil(((crossings[k] + 180) / 360) * MAP_COLS - 0.5));
+			const lastCol = Math.min(
+				MAP_COLS - 1,
+				Math.ceil(((crossings[k + 1] + 180) / 360) * MAP_COLS - 0.5) - 1
+			);
+			for (let col = firstCol; col <= lastCol; col++) mask[row * MAP_COLS + col] = value;
 		}
 	}
 }

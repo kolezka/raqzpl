@@ -1,6 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { AXIAL_TILT, DEFAULT_COLS, DEFAULT_ROWS, renderBackdrop, renderGlobe } from '$lib/globe';
+	import {
+		AXIAL_TILT,
+		DEFAULT_COLS,
+		DEFAULT_ROWS,
+		LABEL_SCALE,
+		renderBackdrop,
+		renderGlobe
+	} from '$lib/globe';
 
 	interface Props {
 		/** Titles shown in the middle of the globe, one after the other. */
@@ -76,13 +83,14 @@
 
 		// The grid covers the whole window: stars reach both edges on a wide screen, and
 		// the globe, which keeps nine tenths of the grid height, fills a tall phone.
+		// Rounded up to whole label cells, so the label grid is exactly as large.
 		const fit = () => {
 			if (!probe) return;
 			const cell = probe.getBoundingClientRect();
 			const cellWidth = cell.width / PROBE_LENGTH;
 			if (cellWidth < 1 || cell.height < 1) return;
-			cols = Math.ceil(window.innerWidth / cellWidth);
-			rows = Math.ceil(window.innerHeight / cell.height);
+			cols = Math.ceil(window.innerWidth / cellWidth / LABEL_SCALE) * LABEL_SCALE;
+			rows = Math.ceil(window.innerHeight / cell.height / LABEL_SCALE) * LABEL_SCALE;
 		};
 
 		const onPointerMove = (event: PointerEvent) => {
@@ -130,7 +138,7 @@
 </script>
 
 <pre class="probe" aria-hidden="true" bind:this={probe}>{'M'.repeat(PROBE_LENGTH)}</pre>
-<div class="stack">
+<div class="stack" style:--label-scale={LABEL_SCALE}>
 	<pre class="haze" aria-hidden="true">{backdrop.haze}</pre>
 	<pre class="dim-stars" aria-hidden="true">{backdrop.dimStars}</pre>
 	<pre class="bright-stars" aria-hidden="true">{backdrop.brightStars}</pre>
@@ -170,15 +178,22 @@
 		pointer-events: none;
 	}
 
+	/* Only sets how fine the drawing is. The globe size follows the window height,
+	   because the grid does. About 90 rows from Full HD up, which is fine enough for
+	   the coastlines to read; the cap keeps a 4K screen from getting coarse again.
+	   The title is not bound by this, it is drawn larger in its own layer. */
+	.probe,
+	.stack {
+		--cell-size: clamp(9px, 0.9vmin, 14px);
+	}
+
 	.probe,
 	.stack > pre {
 		grid-area: 1 / 1;
 		margin: 0;
 		/* The renderer assumes a cell twice as high as it is wide. */
 		font-family: ui-monospace, 'SFMono-Regular', 'Menlo', 'Consolas', monospace;
-		/* Only sets how fine the drawing is. The globe size follows the window height,
-		   because the grid does. The lower end keeps the title readable on a phone. */
-		font-size: clamp(9px, 1.35vmin, 18px);
+		font-size: var(--cell-size);
 		line-height: 1.2;
 		letter-spacing: 0;
 		white-space: pre;
@@ -210,12 +225,14 @@
 		text-shadow: 0 0 0.6em rgba(255, 255, 255, 0.45);
 	}
 
+	/* Small glyphs put less ink on the screen, so the dim layers sit a little higher
+	   than they would with large cells. Land stays far above both. */
 	.ocean {
-		color: rgba(255, 255, 255, 0.38);
+		color: rgba(255, 255, 255, 0.48);
 	}
 
 	.graticule {
-		color: rgba(255, 255, 255, 0.22);
+		color: rgba(255, 255, 255, 0.3);
 	}
 
 	.land {
@@ -223,7 +240,11 @@
 		text-shadow: 0 0 0.4em rgba(255, 255, 255, 0.2);
 	}
 
-	.label {
+	/* Drawn on a coarser grid at a larger size, so the title stays readable when the
+	   cells are small. Each label cell lands exactly on a block of grid cells, because
+	   the font size scales the line height and the character advance together. */
+	.stack > .label {
+		font-size: calc(var(--cell-size) * var(--label-scale));
 		color: #ffffff;
 		text-shadow:
 			0 0 0.5em rgba(255, 255, 255, 0.55),
