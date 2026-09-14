@@ -27,6 +27,7 @@ pnpm run check     # svelte-check and TypeScript
 | Path                                   | Purpose                                       |
 | -------------------------------------- | --------------------------------------------- |
 | `src/lib/globe.ts`                     | Pure ASCII globe renderer, one frame per call  |
+| `src/lib/coastlines.ts`                | Coastline rings and the land mask built from them |
 | `src/lib/components/AsciiGlobe.svelte` | Animation loop, title swap, styling            |
 | `src/routes/+page.svelte`              | Home page                                      |
 | `src/routes/+layout.svelte`            | Global colours and font                        |
@@ -41,12 +42,19 @@ pnpm run check     # svelte-check and TypeScript
 produce the same frame for the same options, so the SSR markup matches the first
 client frame. The server sends the frame for angle `0`; the browser then turns
 the globe with `requestAnimationFrame` at 30 frames per second, about 1 ms per
-frame for a grid of 112 by 56 cells.
+frame for the server grid of 112 by 56 cells and about 4 ms for the 330 by 92
+cells of a Full HD window.
+
+The browser fits the grid to the window. The cell size is `0.9vmin`, clamped
+between 9 px and 14 px, which gives about 90 rows from Full HD up and caps the
+cell count on a 4K screen. The globe keeps nine tenths of the grid height.
 
 The renderer casts one ray per character cell against a unit sphere. It shades
 the point with a diffuse term, a specular highlight and limb darkening, then
-samples a coarse land mask for the character ramp: `.,-~:` for water and `=+*#@`
-for land.
+samples the land mask for the character ramp: `.,-~:;` for water and `=+*%#@`
+for land. The mask is 512 by 256 cells, about 0.7 degrees each, filled from
+hand traced coastline rings in `src/lib/coastlines.ts` by a scanline fill when
+the module loads.
 
 ### Layers
 
@@ -57,12 +65,17 @@ carries the separation that a single ramp cannot.
 | Layer       | Content                        | Opacity |
 | ----------- | ------------------------------ | ------- |
 | `backdrop`  | Stars and the glow of the limb | 0.30    |
-| `ocean`     | Water shading                  | 0.38    |
-| `graticule` | Meridians and parallels        | 0.22    |
+| `ocean`     | Water shading                  | 0.48    |
+| `graticule` | Meridians and parallels        | 0.30    |
 | `land`      | Continents                     | 0.95    |
 | `label`     | Title and subtitle             | 1.00    |
 
-The backdrop never moves, so it renders once.
+The backdrop never moves, so it renders once. Its star density is fixed per cell
+up to 64 rows and per area above that, so a finer grid does not fill the sky.
+
+The `label` layer is drawn on a grid twice as coarse as the others, at twice the
+font size (`LABEL_SCALE`), so the title stays readable when the cells are small.
+Each label character clears the block of cells under it in the other layers.
 
 ### Depth cues
 

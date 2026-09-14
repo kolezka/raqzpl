@@ -29,8 +29,8 @@ const CELL_ASPECT = 2;
 export const AXIAL_TILT = (23.44 * Math.PI) / 180;
 
 // The surface ramps never share a character, so land stays readable against the ocean.
-const OCEAN_RAMP = '.,-~:';
-const LAND_RAMP = '=+*#@';
+const OCEAN_RAMP = '.,-~:;';
+const LAND_RAMP = '=+*%#@';
 /** Meridians and parallels. Its own layer, so it may reuse characters. */
 const GRID_RAMP = '.-+#';
 /** Glow outside the disc. */
@@ -41,6 +41,18 @@ const HALO_DEPTH = 0.1;
 const DIM_STARS = '.,';
 /** Bright stars, drawn in their own layer with a glow. */
 const BRIGHT_STARS = '+*x';
+/**
+ * Star density is set per cell up to this many rows. Above it the chance per cell
+ * drops with the cell area, so a finer grid does not fill the sky with more stars.
+ */
+const STAR_REFERENCE_ROWS = 64;
+
+/**
+ * The label is drawn at this multiple of the cell size, in its own coarser grid. One
+ * label cell covers a square block of grid cells, which are cleared beneath it. The
+ * CSS font size of the label layer must match this.
+ */
+export const LABEL_SCALE = 2;
 
 /** Satellite bodies, then the trail behind them, brightest first. */
 const SATELLITE_GLYPHS = 'oO';
@@ -68,11 +80,11 @@ const AMBIENT = 0.15;
 const GRID_STEP = Math.PI / 6;
 
 /**
- * Size of one patch of relief, in land mask cells. The mask is much finer than a
- * character, so the noise is tied to a patch instead of a cell. That keeps the
- * texture as coarse as the globe itself.
+ * Size of one patch of relief, in land mask cells. The mask is finer than a
+ * character, so the noise is tied to a patch of about four degrees instead of a
+ * cell. That keeps the texture as coarse as the globe itself.
  */
-const RELIEF_PATCH = 4;
+const RELIEF_PATCH = Math.max(1, Math.round(4 / (360 / MAP_COLS)));
 
 /**
  * One grid size, with the disc placed in it and the scratch buffers it needs.
@@ -89,6 +101,9 @@ interface Layout {
 	centerY: number;
 	radiusX: number;
 	radiusY: number;
+	/** Size of the label grid, LABEL_SCALE times coarser than the cell grid. */
+	labelCols: number;
+	labelRows: number;
 	/** Scratch buffers, reused between frames. */
 	onDisc: Uint8Array;
 	meridianIndex: Int16Array;
@@ -109,6 +124,8 @@ function createLayout(cols: number, rows: number): Layout {
 		centerY,
 		radiusX: radiusY * CELL_ASPECT,
 		radiusY,
+		labelCols: Math.ceil(cols / LABEL_SCALE),
+		labelRows: Math.ceil(rows / LABEL_SCALE),
 		onDisc: new Uint8Array(cellCount),
 		meridianIndex: new Int16Array(cellCount),
 		parallelIndex: new Int16Array(cellCount),
@@ -191,7 +208,10 @@ export interface GlobeFrame {
 	graticule: string;
 	/** Satellites in orbit, hidden while they pass behind the globe. */
 	satellites: string;
-	/** Title and subtitle, cut out of every other layer. */
+	/**
+	 * Title and subtitle, cut out of every other layer. This grid is LABEL_SCALE
+	 * times coarser than the others and is drawn at LABEL_SCALE times the font size.
+	 */
 	label: string;
 }
 
@@ -248,7 +268,7 @@ export function morphText(text: string, progress: number, seed: number): string 
 	return out;
 }
 
-function gridToString(grid: string[], { cols, rows }: Layout): string {
+function gridToString(grid: string[], { cols, rows }: { cols: number; rows: number }): string {
 	const lines: string[] = new Array(rows);
 	for (let row = 0; row < rows; row++) {
 		const line = grid.slice(row * cols, (row + 1) * cols).join('');
@@ -260,24 +280,34 @@ function gridToString(grid: string[], { cols, rows }: Layout): string {
 }
 
 /**
- * Writes one centred line into the label layer and clears the same cells in the
- * layers below, so the text always sits on empty space.
+ * Writes one centred line into the label grid and clears the block of cells under
+ * each label character in the layers below, so the text always sits on empty space.
+ * The row is a label grid row.
  */
 function stampLabel(
 	label: string[],
 	below: string[][],
-	row: number,
+	labelRow: number,
 	text: string,
-	{ cols }: Layout
+	{ cols, rows, labelCols }: Layout
 ): void {
 	const padded = `  ${text}  `;
-	const start = Math.round((cols - padded.length) / 2);
+	const start = Math.round((labelCols - padded.length) / 2);
 	for (let i = 0; i < padded.length; i++) {
-		const col = start + i;
-		if (col < 0 || col >= cols) continue;
-		const cell = row * cols + col;
-		label[cell] = padded[i];
-		for (const layer of below) layer[cell] = ' ';
+		const labelCol = start + i;
+		if (labelCol < 0 || labelCol >= labelCols) continue;
+		label[labelRow * labelCols + labelCol] = padded[i];
+
+		for (let dy = 0; dy < LABEL_SCALE; dy++) {
+			const row = labelRow * LABEL_SCALE + dy;
+			if (row >= rows) break;
+			for (let dx = 0; dx < LABEL_SCALE; dx++) {
+				const col = labelCol * LABEL_SCALE + dx;
+				if (col >= cols) break;
+				const cell = row * cols + col;
+				for (const layer of below) layer[cell] = ' ';
+			}
+		}
 	}
 }
 
@@ -296,6 +326,7 @@ export function renderBackdrop(cols = DEFAULT_COLS, rows = DEFAULT_ROWS): Backdr
 	// around the globe when the window changes size.
 	const originX = Math.round(centerX);
 	const originY = Math.round(centerY);
+	const starDensity = Math.min(1, (STAR_REFERENCE_ROWS / grid.rows) ** 2);
 
 	for (let row = 0; row < grid.rows; row++) {
 		const y = (row - centerY) / radiusY;
@@ -316,7 +347,7 @@ export function renderBackdrop(cols = DEFAULT_COLS, rows = DEFAULT_ROWS): Backdr
 
 			// One roll per cell picks both the star and its brightness, so the sky
 			// keeps the same pattern on the server and in the browser.
-			const roll = hash2(col - originX, row - originY);
+			const roll = hash2(col - originX, row - originY) / starDensity;
 			if (roll < 0.0036) brightStars[cell] = BRIGHT_STARS[1];
 			else if (roll < 0.0085) brightStars[cell] = BRIGHT_STARS[0];
 			else if (roll < 0.0125) brightStars[cell] = BRIGHT_STARS[2];
@@ -405,7 +436,7 @@ export function renderGlobe(options: GlobeOptions): GlobeFrame {
 	const land: string[] = new Array(cellCount).fill(' ');
 	const graticule: string[] = new Array(cellCount).fill(' ');
 	const satellites: string[] = new Array(cellCount).fill(' ');
-	const label: string[] = new Array(cellCount).fill(' ');
+	const label: string[] = new Array(grid.labelCols * grid.labelRows).fill(' ');
 
 	const { onDisc, meridianIndex, parallelIndex, nearPole, shade: shadeBuffer } = grid;
 	onDisc.fill(0);
@@ -527,16 +558,18 @@ export function renderGlobe(options: GlobeOptions): GlobeFrame {
 
 	stampSatellites(satellites, [ocean, land, graticule], time, pitch, grid);
 
+	// The title sits just above the middle of the disc and the subtitle one label row
+	// below it, so the pair stays centred on the globe.
 	const below = [ocean, land, graticule, satellites];
-	const middle = Math.round(centerY);
-	stampLabel(label, below, middle - 1, morphText(title, titleProgress, seed), grid);
-	stampLabel(label, below, middle + 2, subtitle, grid);
+	const titleRow = Math.floor(grid.labelRows / 2) - 1;
+	stampLabel(label, below, titleRow, morphText(title, titleProgress, seed), grid);
+	stampLabel(label, below, titleRow + 2, subtitle, grid);
 
 	return {
 		ocean: gridToString(ocean, grid),
 		land: gridToString(land, grid),
 		graticule: gridToString(graticule, grid),
 		satellites: gridToString(satellites, grid),
-		label: gridToString(label, grid)
+		label: gridToString(label, { cols: grid.labelCols, rows: grid.labelRows })
 	};
 }
