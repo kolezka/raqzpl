@@ -104,19 +104,27 @@ interface Layout {
 	/** Size of the label grid, LABEL_SCALE times coarser than the cell grid. */
 	labelCols: number;
 	labelRows: number;
-	/** Scratch buffers, reused between frames. */
+	/**
+	 * Static per-cell geometry, computed once per grid size. The disc mask, the surface
+	 * normal and the shading depend only on the cell position and the light, not on the
+	 * rotation, so they never change between frames.
+	 */
 	onDisc: Uint8Array;
+	normalX: Float32Array;
+	normalY: Float32Array;
+	normalZ: Float32Array;
+	shade: Float32Array;
+	/** Scratch buffers, rewritten for the on-disc cells every frame. */
 	meridianIndex: Int16Array;
 	parallelIndex: Int16Array;
 	nearPole: Uint8Array;
-	shade: Float32Array;
 }
 
 function createLayout(cols: number, rows: number): Layout {
 	const cellCount = cols * rows;
 	const centerY = (rows - 1) / 2;
 	const radiusY = centerY * 0.9;
-	return {
+	const grid: Layout = {
 		cols,
 		rows,
 		cellCount,
@@ -127,11 +135,55 @@ function createLayout(cols: number, rows: number): Layout {
 		labelCols: Math.ceil(cols / LABEL_SCALE),
 		labelRows: Math.ceil(rows / LABEL_SCALE),
 		onDisc: new Uint8Array(cellCount),
+		normalX: new Float32Array(cellCount),
+		normalY: new Float32Array(cellCount),
+		normalZ: new Float32Array(cellCount),
+		shade: new Float32Array(cellCount),
 		meridianIndex: new Int16Array(cellCount),
 		parallelIndex: new Int16Array(cellCount),
-		nearPole: new Uint8Array(cellCount),
-		shade: new Float32Array(cellCount)
+		nearPole: new Uint8Array(cellCount)
 	};
+	computeStatic(grid);
+	return grid;
+}
+
+/**
+ * Fills the disc mask, the surface normal and the shading for one grid. None of these
+ * change as the globe turns, so they are computed once per grid size and read back on
+ * every frame. Same lighting math as the old per-frame pass, just lifted out of it.
+ */
+function computeStatic(grid: Layout): void {
+	const { cols, rows, centerX, centerY, radiusX, radiusY, onDisc, normalX, normalY, normalZ, shade } =
+		grid;
+	for (let row = 0; row < rows; row++) {
+		const y = (row - centerY) / radiusY;
+		for (let col = 0; col < cols; col++) {
+			const x = (col - centerX) / radiusX;
+			const distance = x * x + y * y;
+			if (distance > 1) continue;
+
+			// Front surface point of the unit sphere, +y up.
+			const nx = x;
+			const ny = -y;
+			const nz = Math.sqrt(1 - distance);
+
+			const cell = row * cols + col;
+			onDisc[cell] = 1;
+			normalX[cell] = nx;
+			normalY[cell] = ny;
+			normalZ[cell] = nz;
+
+			const diffuse = Math.max(0, nx * LIGHT_X + ny * LIGHT_Y + nz * LIGHT_Z);
+			const highlight = Math.max(0, nx * HALF_X + ny * HALF_Y + nz * HALF_Z);
+			// Limb darkening rounds the edge off, the way a lit sphere really looks.
+			const curve = 0.5 + 0.5 * nz;
+			shade[cell] = clamp(
+				AMBIENT + (1 - AMBIENT) * Math.pow(diffuse * curve, 1.25) + Math.pow(highlight, 30) * 0.5,
+				0,
+				1
+			);
+		}
+	}
 }
 
 let layout = createLayout(DEFAULT_COLS, DEFAULT_ROWS);
@@ -430,7 +482,7 @@ export function renderGlobe(options: GlobeOptions): GlobeFrame {
 	} = options;
 
 	const grid = useLayout(cols, rows);
-	const { cellCount, centerX, centerY, radiusX, radiusY } = grid;
+	const { cellCount } = grid;
 
 	const ocean: string[] = new Array(cellCount).fill(' ');
 	const land: string[] = new Array(cellCount).fill(' ');
@@ -438,8 +490,9 @@ export function renderGlobe(options: GlobeOptions): GlobeFrame {
 	const satellites: string[] = new Array(cellCount).fill(' ');
 	const label: string[] = new Array(grid.labelCols * grid.labelRows).fill(' ');
 
-	const { onDisc, meridianIndex, parallelIndex, nearPole, shade: shadeBuffer } = grid;
-	onDisc.fill(0);
+	// The disc mask, the normals and the shading are already filled for this grid size.
+	const { onDisc, normalX, normalY, normalZ, meridianIndex, parallelIndex, nearPole } = grid;
+	const shadeBuffer = grid.shade;
 
 	// Negated, so a growing angle turns the globe eastward like the Earth.
 	const sinSpin = Math.sin(-angle);
@@ -449,44 +502,30 @@ export function renderGlobe(options: GlobeOptions): GlobeFrame {
 	const sinRoll = Math.sin(roll);
 	const cosRoll = Math.cos(roll);
 
-	// Pass one: shade the surface and record which grid cell each point falls in.
+	// Pass one: turn the surface, look up the map and record which grid line each cell
+	// sits on. The normal and the shading are read from the grid, not computed here.
 	for (let row = 0; row < grid.rows; row++) {
-		const y = (row - centerY) / radiusY;
 		for (let col = 0; col < grid.cols; col++) {
-			const x = (col - centerX) / radiusX;
-			const distance = x * x + y * y;
-			if (distance > 1) continue;
+			const cell = row * grid.cols + col;
+			if (!onDisc[cell]) continue;
 
-			// Front surface point of the unit sphere, +y up.
-			const normalX = x;
-			const normalY = -y;
-			const normalZ = Math.sqrt(1 - distance);
+			const normalXCell = normalX[cell];
+			const normalYCell = normalY[cell];
+			const normalZCell = normalZ[cell];
 
 			// Undo the globe transform to reach the map coordinates.
-			const afterPitchY = normalY * cosPitch + normalZ * sinPitch;
-			const afterPitchZ = -normalY * sinPitch + normalZ * cosPitch;
-			const afterRollX = normalX * cosRoll + afterPitchY * sinRoll;
-			const afterRollY = -normalX * sinRoll + afterPitchY * cosRoll;
+			const afterPitchY = normalYCell * cosPitch + normalZCell * sinPitch;
+			const afterPitchZ = -normalYCell * sinPitch + normalZCell * cosPitch;
+			const afterRollX = normalXCell * cosRoll + afterPitchY * sinRoll;
+			const afterRollY = -normalXCell * sinRoll + afterPitchY * cosRoll;
 			const textureX = afterRollX * cosSpin - afterPitchZ * sinSpin;
 			const textureZ = afterRollX * sinSpin + afterPitchZ * cosSpin;
 
 			const longitude = Math.atan2(textureX, textureZ);
 			const latitude = Math.asin(clamp(afterRollY, -1, 1));
 			const cosLatitude = Math.sqrt(Math.max(0, 1 - afterRollY * afterRollY));
+			const shade = shadeBuffer[cell];
 
-			const diffuse = Math.max(0, normalX * LIGHT_X + normalY * LIGHT_Y + normalZ * LIGHT_Z);
-			const highlight = Math.max(0, normalX * HALF_X + normalY * HALF_Y + normalZ * HALF_Z);
-			// Limb darkening rounds the edge off, the way a lit sphere really looks.
-			const curve = 0.5 + 0.5 * normalZ;
-			const shade = clamp(
-				AMBIENT + (1 - AMBIENT) * Math.pow(diffuse * curve, 1.25) + Math.pow(highlight, 30) * 0.5,
-				0,
-				1
-			);
-
-			const cell = row * grid.cols + col;
-			onDisc[cell] = 1;
-			shadeBuffer[cell] = shade;
 			nearPole[cell] = cosLatitude < 0.18 ? 1 : 0;
 			meridianIndex[cell] = Math.floor((longitude + Math.PI) / GRID_STEP);
 			parallelIndex[cell] = Math.floor((latitude + Math.PI / 2) / GRID_STEP);

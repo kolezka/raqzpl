@@ -74,6 +74,7 @@
 	onMount(() => {
 		const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
 		let request = 0;
+		let titleTimer = 0;
 		let startedAt = 0;
 		let paintedAt = 0;
 		let targetPitch = 0;
@@ -100,6 +101,8 @@
 			targetPitch = -((event.clientY / window.innerHeight) * 2 - 1) * MAX_PITCH;
 		};
 
+		// Only runs when motion is allowed. It paints the turning globe, the moving
+		// satellites and the morphing title, throttled to FRAME_MS.
 		const tick = (now: number) => {
 			request = requestAnimationFrame(tick);
 			if (startedAt === 0) startedAt = now;
@@ -110,11 +113,6 @@
 			const cycle = Math.floor(elapsed / swapMs);
 			titleIndex = cycle % titles.length;
 
-			if (motion.matches) {
-				titleProgress = 1;
-				return;
-			}
-
 			easedYaw += (targetYaw - easedYaw) * 0.08;
 			easedPitch += (targetPitch - easedPitch) * 0.08;
 			angle = ((elapsed / turnMs) % 1) * 2 * Math.PI + easedYaw;
@@ -124,15 +122,46 @@
 			titleProgress = Math.min(1, (elapsed - cycle * swapMs) / morphMs);
 		};
 
+		const stop = () => {
+			if (request) cancelAnimationFrame(request);
+			if (titleTimer) clearInterval(titleTimer);
+			request = 0;
+			titleTimer = 0;
+		};
+
+		// With reduced motion the globe stays still: no rotation, no orbit, no morph. The
+		// title still names each site, but it swaps on a slow timer instead of a 30fps
+		// animation loop, so the device does no work between swaps.
+		const start = () => {
+			stop();
+			if (motion.matches) {
+				angle = 0;
+				pitch = 0;
+				clock = 0;
+				seed = 0;
+				titleProgress = 1;
+				titleTimer = window.setInterval(() => {
+					titleIndex = (titleIndex + 1) % titles.length;
+				}, swapMs);
+				return;
+			}
+			startedAt = 0;
+			paintedAt = 0;
+			request = requestAnimationFrame(tick);
+		};
+
 		fit();
 		window.addEventListener('resize', fit, { passive: true });
 		window.addEventListener('pointermove', onPointerMove, { passive: true });
-		request = requestAnimationFrame(tick);
+		// Restart in the other mode when the user flips the reduced-motion setting.
+		motion.addEventListener('change', start);
+		start();
 
 		return () => {
-			cancelAnimationFrame(request);
+			stop();
 			window.removeEventListener('resize', fit);
 			window.removeEventListener('pointermove', onPointerMove);
+			motion.removeEventListener('change', start);
 		};
 	});
 </script>
