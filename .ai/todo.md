@@ -116,3 +116,33 @@ drawn.
 ## Next (not in scope)
 
 - Add a domain switch, so `raqz.dev` can show a different default title.
+
+## Round five: a finer globe on Full HD
+
+- [x] Cell size down from `clamp(9px, 0.9vmin, 14px)` to `clamp(7px, 0.65vmin, 11px)`,
+      so a Full HD screen draws 129 rows instead of 93
+- [x] `LABEL_SCALE` 2 -> 3, so the title keeps about the size it had on the coarse grid
+- [x] `gridToString` trims trailing blanks by hand instead of `/\s+$/`
+- [x] `MAX_COLS` 640 -> 960 and `MAX_ROWS` 240 -> 320, so a wide 1x screen is not cropped
+- [x] `pnpm run check` — 0 errors, 0 warnings
+- [x] `pnpm run build` — passes
+- [x] Verified in Chrome at 390x844, 1366x768, 1920x1080, 3440x1440 and 3840x2160
+
+### Notes
+
+The globe read as blocky on Full HD, and at 50 percent browser zoom it read well.
+That zoom level is simply a finer grid: the same window becomes 128 rows instead of
+93. The cell size now aims at that density, so a Full HD screen gets what the zoomed
+page showed, and the title is no longer tied to the smaller cell because it is drawn
+at three times the cell size.
+
+The trailing blank trim was the whole frame budget. A CPU profile of 200 frames at
+459x129 put 1691 ms in `RegExp: \s+$` against 521 ms in `renderGlobe` itself: the
+rows outside the disc are blank over their full width, which is the worst input that
+regex can get. Counting the blanks back by hand cut a frame at that size from
+12.07 ms to 3.30 ms, measured in node, so the finer grid costs less than the coarse
+grid did before. Old and new renderers were compared over 252 layer strings across
+four grid sizes: identical output.
+
+In Chrome at 1920x1080 the main thread went from 14.1 to 20.3 percent of wall time,
+with no dropped animation frame in either build.
