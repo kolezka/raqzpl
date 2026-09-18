@@ -208,12 +208,14 @@
 	}
 
 	/* Only sets how fine the drawing is. The globe size follows the window height,
-	   because the grid does. About 90 rows from Full HD up, which is fine enough for
-	   the coastlines to read; the cap keeps a 4K screen from getting coarse again.
+	   because the grid does. About 128 rows from Full HD up: at 90 rows the disc read
+	   as blocky, and 128 is the density a Full HD screen shows at 50 percent zoom.
+	   The floor keeps a small laptop from going under 7px, the cap keeps a 4K screen
+	   from getting coarse again.
 	   The title is not bound by this, it is drawn larger in its own layer. */
 	.probe,
 	.stack {
-		--cell-size: clamp(9px, 0.9vmin, 14px);
+		--cell-size: clamp(7px, 0.65vmin, 11px);
 	}
 
 	.probe,
