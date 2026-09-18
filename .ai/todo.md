@@ -113,6 +113,47 @@ from edge to edge. On a phone the disc is wider than the grid, so the sides fall
 outside it: that is the zoom, and it costs nothing because those cells are never
 drawn.
 
+## Round five: navigation, project and contact views
+
+- [x] `NavMenu` component, fixed top left, links home / projects / contact, active state
+- [x] `AsciiTransition` overlay: full screen scramble that covers on navigate then
+      dissolves after the new page mounts; driven by `onNavigate` / `afterNavigate`
+- [x] `/projects` route: ASCII themed project cards (placeholder content)
+- [x] `/contact` route: contact channel list (placeholder content)
+- [x] Shared view styling in `+layout.svelte` (global helpers)
+- [x] Respect `prefers-reduced-motion`: instant swap, no scramble
+- [x] `pnpm run check` — 0 errors, 0 warnings
+- [ ] Verify in the browser: nav links, both views, the transition both ways
+
+### Notes
+
+The transition uses SvelteKit `onNavigate`, which returns a promise that holds the
+DOM swap until the screen is fully covered by the scramble, so no page flashes
+through. `afterNavigate` then dissolves the cover. `onNavigate` does not fire on
+the first load, so the globe still appears with no transition.
+
+Placeholder content in the two views is marked with a comment and must be replaced
+with the real projects and contact handles.
+
+## Review (round five)
+
+Implemented on branch `brisk-crab`.
+
+- `src/lib/components/NavMenu.svelte` — fixed top-left menu, active route from
+  `$app/state` `page.url.pathname`, blinking cursor after the `raqz` brand.
+- `src/lib/components/AsciiTransition.svelte` — full-screen `<pre>` scramble.
+  `cover()` returns a promise resolved when fully opaque; `reveal()` dissolves it.
+  Per-cell threshold gives an organic dissolve; black background alpha tracks the
+  fill so the outgoing page is fully hidden at the swap. `prefers-reduced-motion`
+  makes both instant.
+- `src/routes/+layout.svelte` — wires `onNavigate` (cover, holds the DOM swap) and
+  `afterNavigate` (reveal); renders `NavMenu` and `AsciiTransition` on every page.
+  Global helper classes `.view` / `.view-inner` / `.link` / `.muted`.
+- `src/routes/projects/+page.svelte`, `src/routes/contact/+page.svelte` — the two
+  views, placeholder content.
+
+`pnpm run check`: 0 errors, 0 warnings, 177 files.
+
 ## Next (not in scope)
 
 - Add a domain switch, so `raqz.dev` can show a different default title.
