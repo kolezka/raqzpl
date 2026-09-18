@@ -10,6 +10,14 @@ services:
       # SvelteKit needs the public URL to check the origin of a form post.
       - ORIGIN=https://${SERVICE_FQDN_WEB_3000:-raqz.pl}
       - BODY_SIZE_LIMIT=512K
+      # SMTP for the contact form. Set the values in the Coolify environment,
+      # never in this file.
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_FROM=${SMTP_FROM}
+      - CONTACT_TO=${CONTACT_TO}
     expose:
       - '3000'
     restart: unless-stopped

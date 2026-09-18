@@ -187,3 +187,40 @@ four grid sizes: identical output.
 
 In Chrome at 1920x1080 the main thread went from 14.1 to 20.3 percent of wall time,
 with no dropped animation frame in either build.
+
+## Contact page: real handles and a message form
+
+- [x] Remove the X / Twitter row
+- [x] Point github at `https://github.com/kolezka`
+- [x] Point linkedin at `https://www.linkedin.com/in/mariusz-rakus/`
+- [x] Add a contact form with a SvelteKit form action and an SMTP send
+- [x] Document the SMTP variables in `README.md`, `.env.example` and `docker-compose.yaml`
+- [x] `pnpm run check` — 0 errors, 0 warnings
+- [x] `pnpm run build` — passes
+- [x] Verify the four paths against the production build and a local SMTP sink
+
+### Notes
+
+The form posts to a default action in `src/routes/contact/+page.server.ts`. It works
+with JavaScript off; `use:enhance` only removes the reload and drives the button
+state. Settings are read through `$env/dynamic/private`, so Coolify can change the
+mail server without a rebuild.
+
+`From` holds `SMTP_FROM`, and the visitor address goes into `Reply-To`. If the
+visitor address were the sender, SPF and DKIM would fail and most of the messages
+would land in spam. A hidden `company` field is the spam trap: when a bot fills it,
+the page reports success and nothing is sent.
+
+Verified against `node build` on http://localhost:4173 with a raw SMTP sink on port
+2525:
+
+- Valid message: 200, "Message sent", and the sink received it with
+  `Reply-To: Jan Kowalski <jan@example.com>` and `From: contact@raqz.pl`.
+- Bad email address: 400, the error is shown, and the three fields keep their text.
+- Honeypot filled: 200 and the same success text, but the sink count stayed at two.
+- Mail server down: 502, "The mail server refused the message", and `ECONNREFUSED`
+  in the server log.
+
+The page has no rate limit. `getClientAddress()` behind the Coolify proxy returns
+the proxy address unless `ADDRESS_HEADER` is set, so a per-address limit would block
+every visitor at once. Left for later.
