@@ -1,29 +1,62 @@
 <script lang="ts">
-	// Placeholder content — replace with the real projects.
-	const projects = [
+	type Project = {
+		name: string;
+		tagline: string;
+		stack: string[];
+		href: string;
+		live?: string;
+	};
+
+	// Public repos from github.com/kolezka, hand-picked. Keep this list short.
+	const projects: Project[] = [
 		{
-			name: 'ascii-globe',
-			tagline: 'Server-rendered spinning ASCII Earth that fronts raqz.pl.',
-			stack: ['svelte 5', 'typescript', 'vite'],
-			href: 'https://raqz.pl'
+			name: 'NL5H00X',
+			tagline: 'Firmware tooling for locked-down Chinese projectors: unlock, custom launcher, backup and recovery.',
+			stack: ['shell', 'python', 'android'],
+			href: 'https://github.com/kolezka/NL5H00X'
 		},
 		{
-			name: 'project-two',
-			tagline: 'One line about what it does and why it exists.',
-			stack: ['rust', 'wasm'],
-			href: ''
+			name: 'tg-viewer',
+			tagline: 'Offline Telegram forensics for macOS. Decrypts SQLCipher stores and parses the Postbox format, deleted messages and secret chats included.',
+			stack: ['python', 'sqlcipher', 'mtproto'],
+			href: 'https://github.com/kolezka/tg-viewer'
 		},
 		{
-			name: 'project-three',
-			tagline: 'One line about what it does and why it exists.',
-			stack: ['python', 'postgres'],
-			href: ''
+			name: 'renthunter',
+			tagline: 'Self-hosted rental crawler for Trójmiasto. Scrapes OLX, Otodom and trojmiasto.pl, scores listings with an LLM, pushes alerts.',
+			stack: ['bun', 'svelte 5', 'postgres', 'drizzle'],
+			href: 'https://github.com/kolezka/renthunter'
 		},
 		{
-			name: 'project-four',
-			tagline: 'One line about what it does and why it exists.',
-			stack: ['go', 'docker'],
-			href: ''
+			name: 'kolezka-cards',
+			tagline: 'Dynamic SVG cards for GitHub READMEs, with per-card analytics that store no IPs.',
+			stack: ['bun', 'hono', 'sveltekit'],
+			href: 'https://github.com/kolezka/kolezka-cards',
+			live: 'https://ghcards.raqz.link'
+		},
+		{
+			name: 'bruce-pcap-forensics',
+			tagline: 'Local-first dashboard for 802.11 captures from Bruce firmware. Everything stays on the machine.',
+			stack: ['bun', 'sveltekit', 'tshark', 'sqlite'],
+			href: 'https://github.com/kolezka/bruce-pcap-forensics'
+		},
+		{
+			name: 'subagent-router',
+			tagline: 'Provider-agnostic subagent model routing for Claude Code, OpenCode and Codex.',
+			stack: ['typescript', 'node'],
+			href: 'https://github.com/kolezka/subagent-router'
+		},
+		{
+			name: 'claude-code-routing-benchmark',
+			tagline: 'Same task, same commit, same prompt, different model behind the API. Publishes one self-contained HTML report.',
+			stack: ['typescript', 'claude code'],
+			href: 'https://github.com/kolezka/claude-code-routing-benchmark'
+		},
+		{
+			name: 'search-builder',
+			tagline: 'Boolean query builder for Google, GitHub Code Search and Shodan.',
+			stack: ['sveltekit', 'typescript'],
+			href: 'https://github.com/kolezka/search-builder'
 		}
 	];
 </script>
@@ -43,9 +76,12 @@
 				<li class="card">
 					<div class="card-head">
 						<span class="name">&gt; {project.name}</span>
-						{#if project.href}
-							<a class="link" href={project.href} target="_blank" rel="noreferrer">open ↗</a>
-						{/if}
+						<span class="links">
+							{#if project.live}
+								<a class="link" href={project.live} target="_blank" rel="noreferrer">live ↗</a>
+							{/if}
+							<a class="link" href={project.href} target="_blank" rel="noreferrer">code ↗</a>
+						</span>
 					</div>
 					<p class="tagline">{project.tagline}</p>
 					<p class="stack">{project.stack.join(' · ')}</p>
@@ -83,6 +119,12 @@
 		justify-content: space-between;
 		align-items: baseline;
 		gap: 1rem;
+	}
+
+	.links {
+		display: flex;
+		flex-shrink: 0;
+		gap: 0.9rem;
 	}
 
 	.name {
