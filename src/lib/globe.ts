@@ -19,8 +19,8 @@ export const DEFAULT_COLS = 112;
 export const DEFAULT_ROWS = 56;
 
 /** Keeps an unusual font size from asking for a grid with millions of cells. */
-const MAX_COLS = 640;
-const MAX_ROWS = 240;
+const MAX_COLS = 960;
+const MAX_ROWS = 320;
 
 /** Cell height divided by cell width. The CSS line-height must match this. */
 const CELL_ASPECT = 2;
@@ -51,8 +51,11 @@ const STAR_REFERENCE_ROWS = 64;
  * The label is drawn at this multiple of the cell size, in its own coarser grid. One
  * label cell covers a square block of grid cells, which are cleared beneath it. The
  * CSS font size of the label layer must match this.
+ *
+ * Three, because the globe cell is now small enough that a two times title would read
+ * as fine print. The title keeps about the size it had on the coarser grid.
  */
-export const LABEL_SCALE = 2;
+export const LABEL_SCALE = 3;
 
 /** Satellite bodies, then the trail behind them, brightest first. */
 const SATELLITE_GLYPHS = 'oO';
@@ -323,10 +326,14 @@ export function morphText(text: string, progress: number, seed: number): string 
 function gridToString(grid: string[], { cols, rows }: { cols: number; rows: number }): string {
 	const lines: string[] = new Array(rows);
 	for (let row = 0; row < rows; row++) {
-		const line = grid.slice(row * cols, (row + 1) * cols).join('');
+		const start = row * cols;
 		// Row zero keeps its trailing spaces. That makes every layer exactly as wide as
 		// the grid, so the layers stay lined up and the block stays centred.
-		lines[row] = row === 0 ? line : line.replace(/\s+$/, '');
+		// The blanks are counted back by hand: a /\s+$/ replace on a row that is mostly
+		// empty cost more than the whole rest of the frame.
+		let end = start + cols;
+		if (row > 0) while (end > start && grid[end - 1] === ' ') end--;
+		lines[row] = grid.slice(start, end).join('');
 	}
 	return lines.join('\n');
 }
