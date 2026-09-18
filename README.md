@@ -30,6 +30,8 @@ pnpm run check     # svelte-check and TypeScript
 | `src/lib/coastlines.ts`                | Coastline rings and the land mask built from them |
 | `src/lib/components/AsciiGlobe.svelte` | Animation loop, title swap, styling            |
 | `src/routes/+page.svelte`              | Home page                                      |
+| `src/routes/contact/+page.svelte`      | Contact page: channels and the message form    |
+| `src/routes/contact/+page.server.ts`   | Form action, validation and the SMTP send      |
 | `src/routes/+layout.svelte`            | Global colours and font                        |
 | `src/routes/+layout.ts`                | SSR flags                                      |
 | `vite.config.ts`                       | SvelteKit plugin and adapter                   |
@@ -91,6 +93,28 @@ Each label character clears the block of cells under it in the other layers.
 `prefers-reduced-motion: reduce` stops the rotation, the pointer tilt, the star
 twinkle and the scramble. The title still changes.
 
+## Contact form
+
+`/contact` posts to a SvelteKit form action that sends the message over SMTP with
+`nodemailer`. The form works without JavaScript; with JavaScript it submits
+through `use:enhance`, so the page does not reload.
+
+Settings come from the runtime environment (`$env/dynamic/private`), so Coolify
+can change them without a rebuild. Copy `.env.example` to `.env` for local work.
+
+| Variable     | Purpose                                                   |
+| ------------ | --------------------------------------------------------- |
+| `SMTP_HOST`  | SMTP server. Required; without it the send returns 502.     |
+| `SMTP_PORT`  | Port. 587 by default. Port 465 switches to implicit TLS.    |
+| `SMTP_USER`  | User name. Leave empty for a server without authentication. |
+| `SMTP_PASS`  | Password.                                                   |
+| `SMTP_FROM`  | Envelope sender. Keep it on a domain the server may send for. |
+| `CONTACT_TO` | Recipient. `hello@raqz.pl` by default.                      |
+
+The visitor address goes into `Reply-To`, never into `From`, so SPF and DKIM stay
+valid. A hidden `company` field catches bots: when it holds text, the page reports
+success and sends nothing.
+
 ## Deployment
 
 The project uses `@sveltejs/adapter-node`, so the build is a Node server that
@@ -109,7 +133,8 @@ one installs the production dependencies, and the last one holds only `build/`,
 about 161 MB.
 
 The adapter bundles the `devDependencies` into `build/`. Only packages under
-`dependencies` go into the image, and there are none today.
+`dependencies` go into the image; today that is `nodemailer`, used by the
+contact form.
 
 ### Coolify
 

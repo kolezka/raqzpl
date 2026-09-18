@@ -1,10 +1,19 @@
 <script lang="ts">
-	// Placeholder contact details — replace with the real handles.
+	import { enhance } from '$app/forms';
+	import type { ActionData } from './$types';
+
+	let { form }: { form: ActionData } = $props();
+
+	let sending = $state(false);
+
 	const channels = [
 		{ label: 'email', value: 'hello@raqz.pl', href: 'mailto:hello@raqz.pl' },
-		{ label: 'github', value: 'github.com/raqz', href: 'https://github.com/raqz' },
-		{ label: 'x', value: '@raqz', href: 'https://x.com/raqz' },
-		{ label: 'linkedin', value: 'in/raqz', href: 'https://www.linkedin.com/in/raqz' }
+		{ label: 'github', value: 'github.com/kolezka', href: 'https://github.com/kolezka' },
+		{
+			label: 'linkedin',
+			value: 'in/mariusz-rakus',
+			href: 'https://www.linkedin.com/in/mariusz-rakus/'
+		}
 	];
 
 	const domains = ['raqz.pl', 'raqz.dev', 'raqz.link', 'raqz.app', 'raqz.contact'];
@@ -28,6 +37,62 @@
 				</li>
 			{/each}
 		</ul>
+
+		<h2>send a message</h2>
+
+		{#if form?.success}
+			<p class="note ok">Message sent. I answer from hello@raqz.pl.</p>
+		{:else}
+			<form
+				method="POST"
+				use:enhance={() => {
+					sending = true;
+					return async ({ update }) => {
+						await update();
+						sending = false;
+					};
+				}}
+			>
+				<label>
+					<span class="k">name</span>
+					<input name="name" type="text" maxlength="120" required value={form?.values?.name ?? ''} />
+				</label>
+
+				<label>
+					<span class="k">email</span>
+					<input
+						name="email"
+						type="email"
+						maxlength="254"
+						required
+						value={form?.values?.email ?? ''}
+					/>
+				</label>
+
+				<label>
+					<span class="k">message</span>
+					<textarea name="message" rows="6" maxlength="5000" required
+						>{form?.values?.message ?? ''}</textarea
+					>
+				</label>
+
+				<!-- Honeypot. Hidden from people, tempting to bots. -->
+				<input
+					class="trap"
+					name="company"
+					type="text"
+					tabindex="-1"
+					autocomplete="off"
+					aria-hidden="true"
+				/>
+
+				{#if form?.error}
+					<p class="note error">{form.error}</p>
+				{/if}
+
+				<button type="submit" disabled={sending}>{sending ? 'sending…' : 'send ↵'}</button>
+			</form>
+		{/if}
 
 		<p class="domains muted">{domains.join('  ·  ')}</p>
 	</div>
@@ -54,6 +119,93 @@
 		font-size: 0.8rem;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
+	}
+
+	h2 {
+		margin: 2.5rem 0 1rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: rgba(255, 255, 255, 0.4);
+	}
+
+	form {
+		display: flex;
+		flex-direction: column;
+		gap: 0.9rem;
+	}
+
+	label {
+		display: flex;
+		flex-direction: column;
+		gap: 0.4rem;
+	}
+
+	label .k {
+		width: auto;
+	}
+
+	input,
+	textarea {
+		box-sizing: border-box;
+		width: 100%;
+		padding: 0.6rem 0.7rem;
+		background: transparent;
+		border: 1px solid rgba(255, 255, 255, 0.18);
+		color: #ffffff;
+		font: inherit;
+		resize: vertical;
+		transition: border-color 0.15s ease;
+	}
+
+	input:focus,
+	textarea:focus {
+		outline: none;
+		border-color: rgba(255, 255, 255, 0.7);
+	}
+
+	.trap {
+		position: absolute;
+		left: -9999px;
+		width: 1px;
+		height: 1px;
+	}
+
+	button {
+		align-self: flex-start;
+		padding: 0.6rem 1.2rem;
+		background: transparent;
+		border: 1px solid rgba(255, 255, 255, 0.35);
+		color: #ffffff;
+		font: inherit;
+		cursor: pointer;
+		transition:
+			border-color 0.15s ease,
+			background 0.15s ease;
+	}
+
+	button:hover:not(:disabled) {
+		border-color: #ffffff;
+		background: rgba(255, 255, 255, 0.06);
+	}
+
+	button:disabled {
+		cursor: default;
+		opacity: 0.5;
+	}
+
+	.note {
+		margin: 0;
+		font-size: 0.9rem;
+	}
+
+	.note.ok {
+		color: rgba(255, 255, 255, 0.8);
+	}
+
+	.note.error {
+		color: #ff8a8a;
 	}
 
 	.domains {
