@@ -1,13 +1,14 @@
 <script lang="ts">
 	import AsciiGlobe from '$lib/components/AsciiGlobe.svelte';
+	import { page } from '$app/state';
+	import { t } from '$lib/i18n';
+
+	const strings = $derived(t(page.data.lang));
 </script>
 
 <svelte:head>
-	<title>raqz.pl — Mariusz Rakus</title>
-	<meta
-		name="description"
-		content="raqz.pl, raqz.dev, raqz.link, raqz.app, raqz.contact — Mariusz Rakus"
-	/>
+	<title>{strings.home.title}</title>
+	<meta name="description" content={strings.home.description} />
 </svelte:head>
 
 <main>

@@ -224,3 +224,28 @@ Verified against `node build` on http://localhost:4173 with a raw SMTP sink on p
 The page has no rate limit. `getClientAddress()` behind the Coolify proxy returns
 the proxy address unless `ADDRESS_HEADER` is set, so a per-address limit would block
 every visitor at once. Left for later.
+
+## Round six: Polish and English language
+
+- [x] `src/lib/i18n.ts` — `Lang` type, dictionaries `en` / `pl`, `pickLang`, `t()`
+- [x] `src/hooks.server.ts` — resolve language per request (cookie, then
+      `Accept-Language`, then `en`); `?lang=` stores a cookie and redirects away;
+      `%lang%` placeholder replaced in the `<html>` tag
+- [x] `src/routes/+layout.server.ts` — exposes `locals.lang` as `page.data.lang`
+- [x] `src/app.d.ts` — `App.Locals.lang` and `App.PageData.lang`
+- [x] `src/app.html` — `<html lang="%lang%">`
+- [x] `NavMenu` — labels translated, EN/PL switch with `data-sveltekit-reload`
+- [x] Home / projects / contact pages read strings from `t(page.data.lang)`
+- [x] Projects taglines carry `en` and `pl` text
+- [x] Contact form action returns errors in the request language
+- [x] `pnpm run check` — 0 errors, 0 warnings; `pnpm run build` — passes
+- [x] Verified against `node build`: SSR `<html lang>`, cookie and header paths,
+      `?lang=` redirect + Set-Cookie, Polish and English page content
+
+### Notes
+
+Language lives in a cookie, read server side, so SSR and the browser agree on the
+first frame. `Accept-Language` gives the default for a first visit; the EN/PL links
+force a full document load so the new cookie also reaches the `<html lang>` attribute
+and the server markup, not only the client store. The globe titles (the domains) are
+names, so they stay the same in both languages.
