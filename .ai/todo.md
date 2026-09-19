@@ -249,3 +249,13 @@ first frame. `Accept-Language` gives the default for a first visit; the EN/PL li
 force a full document load so the new cookie also reaches the `<html lang>` attribute
 and the server markup, not only the client store. The globe titles (the domains) are
 names, so they stay the same in both languages.
+
+### Fix: language switch did not persist over plain http
+
+Reported "switching does not work". Reproduced in a browser: on `localhost` and
+`127.0.0.1` it worked, but the cookie carried `Secure`. SvelteKit defaults
+`cookies.set` `secure` to true off `localhost`, so behind an http proxy or on a LAN
+IP the browser drops the cookie and the choice never sticks. `hooks.server.ts` now
+sets `secure: event.url.protocol === 'https:'`, so http keeps the cookie and https
+still marks it `Secure`. Coolify sets `ORIGIN=https://…`, so production stays secure.
+Verified: over http the `Set-Cookie` no longer has `Secure`; switch persists.
