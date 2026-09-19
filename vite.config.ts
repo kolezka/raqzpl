@@ -1,6 +1,6 @@
 import adapter from '@sveltejs/adapter-node';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
 	plugins: [
@@ -14,5 +14,10 @@ export default defineConfig({
 			// Node server in a container, started by Coolify. Output goes to build/.
 			adapter: adapter()
 		})
-	]
+	],
+
+	test: {
+		environment: 'node',
+		include: ['src/**/*.test.ts']
+	}
 });
