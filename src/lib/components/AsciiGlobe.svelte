@@ -30,12 +30,25 @@
 		morphMs = 900
 	}: Props = $props();
 
-	/** Frames per second. Lower than the display rate, because the globe is coarse. */
-	const FRAME_MS = 1000 / 30;
+	/**
+	 * Frame pacing. Thirty per second while the device keeps up, which is already
+	 * lower than the display rate because the globe is coarse. A device that cannot
+	 * paint that fast is paced down to its own speed instead of queueing frames it
+	 * will never show, which is what made a laptop in low power mode stutter.
+	 */
+	const FAST_FRAME_MS = 1000 / 30;
+	const SLOW_FRAME_MS = 1000 / 12;
 
 	/** How far the pointer tips the globe, in radians. */
 	const MAX_PITCH = 0.3;
 	const MAX_YAW = 0.32;
+
+	/**
+	 * The tilt is rounded to this step. The renderer caches everything that depends on
+	 * the tilt, so a value that settles on an exact step keeps the cache alive once the
+	 * pointer stops. The step is about a tenth of a cell on the disc, so it does not show.
+	 */
+	const PITCH_STEP = 1 / 512;
 
 	/** Characters in the probe line. Only used to measure one character cell. */
 	const PROBE_LENGTH = 20;
@@ -75,12 +88,17 @@
 		const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
 		let request = 0;
 		let titleTimer = 0;
+		let fitRequest = 0;
 		let startedAt = 0;
 		let paintedAt = 0;
 		let targetPitch = 0;
 		let targetYaw = 0;
 		let easedPitch = 0;
 		let easedYaw = 0;
+		let frameMs = FAST_FRAME_MS;
+		let lastCallback = 0;
+		let frameCost = FAST_FRAME_MS;
+		let measuring = false;
 
 		// The grid covers the whole window: stars reach both edges on a wide screen, and
 		// the globe, which keeps nine tenths of the grid height, fills a tall phone.
@@ -94,6 +112,16 @@
 			rows = Math.ceil(window.innerHeight / cell.height / LABEL_SCALE) * LABEL_SCALE;
 		};
 
+		// A new grid size rebuilds every cached buffer and the backdrop, so a drag of the
+		// window edge must not do it once per resize event.
+		const queueFit = () => {
+			if (fitRequest) return;
+			fitRequest = requestAnimationFrame(() => {
+				fitRequest = 0;
+				fit();
+			});
+		};
+
 		const onPointerMove = (event: PointerEvent) => {
 			if (motion.matches) return;
 			targetYaw = ((event.clientX / window.innerWidth) * 2 - 1) * MAX_YAW;
@@ -102,12 +130,32 @@
 		};
 
 		// Only runs when motion is allowed. It paints the turning globe, the moving
-		// satellites and the morphing title, throttled to FRAME_MS.
+		// satellites and the morphing title, throttled to frameMs.
 		const tick = (now: number) => {
 			request = requestAnimationFrame(tick);
-			if (startedAt === 0) startedAt = now;
-			if (now - paintedAt < FRAME_MS) return;
+			if (startedAt === 0) {
+				startedAt = now;
+				lastCallback = now;
+			}
+			const sinceCallback = now - lastCallback;
+			lastCallback = now;
+
+			// The callback after a painted frame arrives once that frame is on screen, so
+			// the gap is what one frame really costs: our work plus layout and paint. Pace
+			// the next frame to that cost, between 30 and 12 per second.
+			if (measuring) {
+				measuring = false;
+				frameCost += (sinceCallback - frameCost) * 0.2;
+				if (frameCost > frameMs) frameMs = Math.min(SLOW_FRAME_MS, frameMs * 1.2);
+				else if (frameCost < frameMs * 0.5) frameMs = Math.max(FAST_FRAME_MS, frameMs / 1.2);
+			}
+
+			// The slack matters: two ticks of a 60Hz display are 33.32 ms, a hair under a
+			// 30 per second target, so an exact test skips every other pair and the globe
+			// runs at 20 per second instead of 30.
+			if (now - paintedAt < frameMs - 2) return;
 			paintedAt = now;
+			measuring = true;
 
 			const elapsed = now - startedAt;
 			const cycle = Math.floor(elapsed / swapMs);
@@ -116,7 +164,7 @@
 			easedYaw += (targetYaw - easedYaw) * 0.08;
 			easedPitch += (targetPitch - easedPitch) * 0.08;
 			angle = ((elapsed / turnMs) % 1) * 2 * Math.PI + easedYaw;
-			pitch = easedPitch;
+			pitch = Math.round(easedPitch / PITCH_STEP) * PITCH_STEP;
 			clock = elapsed;
 			seed = cycle;
 			titleProgress = Math.min(1, (elapsed - cycle * swapMs) / morphMs);
@@ -147,11 +195,14 @@
 			}
 			startedAt = 0;
 			paintedAt = 0;
+			frameMs = FAST_FRAME_MS;
+			frameCost = FAST_FRAME_MS;
+			measuring = false;
 			request = requestAnimationFrame(tick);
 		};
 
 		fit();
-		window.addEventListener('resize', fit, { passive: true });
+		window.addEventListener('resize', queueFit, { passive: true });
 		window.addEventListener('pointermove', onPointerMove, { passive: true });
 		// Restart in the other mode when the user flips the reduced-motion setting.
 		motion.addEventListener('change', start);
@@ -159,7 +210,8 @@
 
 		return () => {
 			stop();
-			window.removeEventListener('resize', fit);
+			if (fitRequest) cancelAnimationFrame(fitRequest);
+			window.removeEventListener('resize', queueFit);
 			window.removeEventListener('pointermove', onPointerMove);
 			motion.removeEventListener('change', start);
 		};
@@ -229,6 +281,12 @@
 		letter-spacing: 0;
 		white-space: pre;
 		user-select: none;
+		/* Plain ASCII in a monospace face needs no kerning and no ligatures. Turning the
+		   lookups off cuts the cost of laying out tens of thousands of glyphs each frame
+		   and changes nothing on screen. */
+		text-rendering: optimizeSpeed;
+		font-kerning: none;
+		font-variant-ligatures: none;
 		/* Small glyphs pick up colour fringes from subpixel smoothing. Both the hint
 		   and the composited layer make the browser fall back to grey smoothing. */
 		-webkit-font-smoothing: antialiased;

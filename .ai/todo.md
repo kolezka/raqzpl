@@ -249,3 +249,46 @@ first frame. `Accept-Language` gives the default for a first visit; the EN/PL li
 force a full document load so the new cookie also reaches the `<html lang>` attribute
 and the server markup, not only the client store. The globe titles (the domains) are
 names, so they stay the same in both languages.
+
+---
+
+## Task — globe performance on a low power laptop
+
+The globe stutters on a MacBook M4 Pro in low power mode. Make each frame cheaper
+and stop the loop from asking for more frames than the device can paint. The frame
+on screen must not change.
+
+## Steps
+
+- [x] `src/lib/globe.ts` — layers held as reused `Uint8Array` buffers of ASCII codes,
+      one string per row built with `String.fromCharCode`, no per-cell string
+- [x] `src/lib/globe.ts` — disc stored as a first/last column span per row, so both
+      frame passes walk only the disc and never test a mask
+- [x] `src/lib/globe.ts` — orientation cache: turning the globe only adds to the
+      longitude, so `atan2`, `asin` and the map row are computed once per tilt
+      instead of once per cell per frame
+- [x] `src/lib/globe.ts` — relief noise precomputed per map patch
+- [x] `AsciiGlobe.svelte` — frame pacing measures what one frame really costs and
+      backs off from 30 to as low as 12 per second on a device that cannot keep up
+- [x] `AsciiGlobe.svelte` — 30 per second target was silently running at 20 on a
+      60 Hz display, because two vsync ticks are 33.32 ms against a 33.33 ms test
+- [x] `AsciiGlobe.svelte` — tilt rounded to 1/512 rad, so the orientation cache
+      survives an idle pointer
+- [x] `AsciiGlobe.svelte` — resize coalesced into one animation frame
+- [x] CSS — `text-rendering: optimizeSpeed`, no kerning, no ligatures
+- [x] Output proved identical to the old renderer over 35 grid sizes
+- [x] `pnpm run check` — 0 errors, 0 warnings; `pnpm run build` — passes
+
+## Review
+
+Renderer only, measured with Node on a 360x114 grid: 2.34 ms to 0.51 ms per frame
+with the pointer still, 2.35 ms to 1.07 ms while the pointer moves.
+
+Measured in Chrome on a 306x69 grid, main thread occupancy from a MessageChannel
+ping-pong against an idle baseline of 286252 hops/s: old 262294 hops/s at 21.7 fps,
+new 264716 hops/s at 30.2 fps. So 3.86 ms to 2.49 ms of main thread per frame, and
+the page now hits its 30 fps target while using slightly less of the main thread
+than the old build did at 21.7 fps.
+
+Nothing on screen changed: every layer string of the new renderer is byte identical
+to the old one over 35 grid sizes, six rotations and tilts each, backdrop included.
