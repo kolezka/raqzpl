@@ -1,6 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import nodemailer, { type Transporter } from 'nodemailer';
 import { env } from '$env/dynamic/private';
+import { t } from '$lib/i18n';
 import type { Actions } from './$types';
 
 const MAX_NAME = 120;
@@ -33,7 +34,9 @@ function getTransport(): Transporter {
 }
 
 export const actions = {
-	default: async ({ request }) => {
+	default: async ({ request, locals }) => {
+		// The visitor reads the errors, so they follow the language of the request.
+		const strings = t(locals.lang).contact;
 		const data = await request.formData();
 		const name = String(data.get('name') ?? '').trim();
 		const email = String(data.get('email') ?? '').trim();
@@ -47,13 +50,13 @@ export const actions = {
 		const values = { name, email, message };
 
 		if (!name || name.length > MAX_NAME) {
-			return fail(400, { error: 'Give a name, 120 characters at most.', values });
+			return fail(400, { error: strings.errorName, values });
 		}
 		if (!EMAIL_PATTERN.test(email) || email.length > MAX_EMAIL) {
-			return fail(400, { error: 'Give an email address I can answer.', values });
+			return fail(400, { error: strings.errorEmail, values });
 		}
 		if (!message || message.length > MAX_MESSAGE) {
-			return fail(400, { error: 'Write a message, 5000 characters at most.', values });
+			return fail(400, { error: strings.errorMessage, values });
 		}
 
 		const to = env.CONTACT_TO ?? 'hello@raqz.pl';
@@ -70,7 +73,7 @@ export const actions = {
 			});
 		} catch (error) {
 			console.error('contact form: send failed', error);
-			return fail(502, { error: 'The mail server refused the message. Try again later.', values });
+			return fail(502, { error: strings.errorServer, values });
 		}
 
 		return { success: true };

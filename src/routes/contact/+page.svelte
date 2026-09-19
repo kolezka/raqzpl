@@ -1,10 +1,14 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { page } from '$app/state';
+	import { t } from '$lib/i18n';
 	import type { ActionData } from './$types';
 
 	let { form }: { form: ActionData } = $props();
 
 	let sending = $state(false);
+
+	const strings = $derived(t(page.data.lang));
 
 	const channels = [
 		{ label: 'email', value: 'hello@raqz.pl', href: 'mailto:hello@raqz.pl' },
@@ -20,14 +24,14 @@
 </script>
 
 <svelte:head>
-	<title>contact — raqz.pl</title>
-	<meta name="description" content="Contact Mariusz Rakus" />
+	<title>{strings.contact.title}</title>
+	<meta name="description" content={strings.contact.description} />
 </svelte:head>
 
 <section class="view">
 	<div class="view-inner">
-		<h1>contact</h1>
-		<p class="lead">Reach me on any of these.</p>
+		<h1>{strings.contact.heading}</h1>
+		<p class="lead">{strings.contact.lead}</p>
 
 		<ul class="rows">
 			{#each channels as channel (channel.label)}
@@ -38,10 +42,10 @@
 			{/each}
 		</ul>
 
-		<h2>send a message</h2>
+		<h2>{strings.contact.formHeading}</h2>
 
 		{#if form?.success}
-			<p class="note ok">Message sent. I answer from hello@raqz.pl.</p>
+			<p class="note ok">{strings.contact.sent}</p>
 		{:else}
 			<form
 				method="POST"
@@ -54,12 +58,12 @@
 				}}
 			>
 				<label>
-					<span class="k">name</span>
+					<span class="k">{strings.contact.name}</span>
 					<input name="name" type="text" maxlength="120" required value={form?.values?.name ?? ''} />
 				</label>
 
 				<label>
-					<span class="k">email</span>
+					<span class="k">{strings.contact.email}</span>
 					<input
 						name="email"
 						type="email"
@@ -70,7 +74,7 @@
 				</label>
 
 				<label>
-					<span class="k">message</span>
+					<span class="k">{strings.contact.message}</span>
 					<textarea name="message" rows="6" maxlength="5000" required
 						>{form?.values?.message ?? ''}</textarea
 					>
@@ -90,7 +94,9 @@
 					<p class="note error">{form.error}</p>
 				{/if}
 
-				<button type="submit" disabled={sending}>{sending ? 'sending…' : 'send ↵'}</button>
+				<button type="submit" disabled={sending}
+					>{sending ? strings.contact.sending : strings.contact.send}</button
+				>
 			</form>
 		{/if}
 
