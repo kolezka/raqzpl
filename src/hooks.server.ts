@@ -1,45 +1,37 @@
-import type { Handle } from '@sveltejs/kit';
-import { LANG_COOKIE, LANG_PARAM, isLang, pickLang } from '$lib/i18n';
+import { type Handle } from '@sveltejs/kit';
+import { LANG_COOKIE, isLang, pickLang } from '$lib/i18n';
 
-const YEAR_SECONDS = 60 * 60 * 24 * 365;
-
+// The language lives in the first path segment (`/en`, `/pl`), so every language has its
+// own crawlable URL. A request without a language is redirected to the visitor's
+// preferred one. Assets and files like `/sitemap.xml` keep their bare paths.
 export const handle: Handle = async ({ event, resolve }) => {
-	// `?lang=pl` stores the choice and then leaves the URL, so every page has one
-	// address. The links carry `data-sveltekit-reload`, so this runs on a document
-	// request and the redirect lands on a clean URL.
-	const requested = event.url.searchParams.get(LANG_PARAM);
-	if (isLang(requested)) {
-		const target = new URL(event.url);
-		target.searchParams.delete(LANG_PARAM);
+	const { pathname, search } = event.url;
+	const segment = pathname.split('/')[1] ?? '';
 
-		// The response is built by hand instead of with `redirect()`, because it needs
-		// its own `cache-control`. Cloudflare sits in front of the site and stores
-		// redirects. A stored copy loses the `set-cookie`, so the browser gets a
-		// redirect without the language and the choice never sticks. `no-store` keeps
-		// this response out of the CDN and out of the browser cache.
-		return new Response(null, {
-			status: 303,
-			headers: {
-				location: `${target.pathname}${target.search}`,
-				'cache-control': 'private, no-store',
-				'set-cookie': event.cookies.serialize(LANG_COOKIE, requested, {
-					path: '/',
-					maxAge: YEAR_SECONDS,
-					httpOnly: false,
-					sameSite: 'lax',
-					// SvelteKit defaults `secure` to true off localhost. Over plain http on a LAN
-					// IP or behind an http proxy the browser then drops the cookie and the choice
-					// never sticks. Mark it secure only on https, where the browser keeps it.
-					secure: event.url.protocol === 'https:'
-				})
-			}
-		});
+	if (isLang(segment)) {
+		event.locals.lang = segment;
+	} else {
+		const preferred = pickLang(
+			event.cookies.get(LANG_COOKIE),
+			event.request.headers.get('accept-language')
+		);
+
+		// Leave the build assets and files (`/_app/...`, `/robots.txt`, `/favicon.svg`) alone.
+		const isAsset = pathname.startsWith('/_app/') || /\.[a-z0-9]+$/i.test(pathname);
+		if (!isAsset) {
+			// `no-store`, because the target depends on the visitor. A cached redirect would
+			// send everyone to one language, the exact bug that broke the switch before.
+			return new Response(null, {
+				status: 307,
+				headers: {
+					location: `/${preferred}${pathname === '/' ? '' : pathname}${search}`,
+					'cache-control': 'no-store'
+				}
+			});
+		}
+
+		event.locals.lang = preferred;
 	}
-
-	event.locals.lang = pickLang(
-		event.cookies.get(LANG_COOKIE),
-		event.request.headers.get('accept-language')
-	);
 
 	return resolve(event, {
 		transformPageChunk: ({ html }) => html.replace('%lang%', event.locals.lang)

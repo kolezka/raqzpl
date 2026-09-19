@@ -1,22 +1,25 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { LANGS, LANG_PARAM, t, type Lang } from '$lib/i18n';
+	import { LANGS, t, pathWithoutLang, withLang, type Lang } from '$lib/i18n';
 
 	const lang = $derived(page.data.lang);
 	const strings = $derived(t(lang));
+	// The language-independent tail of the path, so a switch stays on the same page.
+	const rest = $derived(pathWithoutLang(page.url.pathname));
 
 	const items = $derived([
-		{ href: '/', label: strings.nav.home },
-		{ href: '/projects', label: strings.nav.projects },
-		{ href: '/contact', label: strings.nav.contact }
+		{ href: withLang(lang, ''), label: strings.nav.home },
+		{ href: withLang(lang, '/projects'), label: strings.nav.projects },
+		{ href: withLang(lang, '/contact'), label: strings.nav.contact }
 	]);
 
-	// Keeps the visitor on the same page, only with the language parameter. The
-	// server stores the choice in a cookie and redirects the parameter away.
-	function langHref(code: Lang): string {
-		const target = new URL(page.url);
-		target.searchParams.set(LANG_PARAM, code);
-		return `${target.pathname}${target.search}`;
+	// The language is in the URL, so a switch is just a link to the same page under the
+	// other language. The cookie is only a preference the root redirect reads for a bare
+	// `/`. Setting it on the client keeps every page free of a `Set-Cookie` header, so the
+	// CDN can still cache the html.
+	function remember(code: Lang) {
+		const secure = location.protocol === 'https:' ? '; secure' : '';
+		document.cookie = `lang=${code}; path=/; max-age=31536000; samesite=lax${secure}`;
 	}
 </script>
 
@@ -35,14 +38,12 @@
 	<ul class="langs" aria-label={strings.nav.language}>
 		{#each LANGS as code (code)}
 			<li>
-				<!-- A full page load, so the new cookie also reaches the `lang` attribute
-				     of the document and the server rendered markup. -->
 				<a
-					href={langHref(code)}
+					href={withLang(code, rest)}
 					class:active={code === lang}
 					aria-current={code === lang ? 'true' : undefined}
 					hreflang={code}
-					data-sveltekit-reload>{code}</a
+					onclick={() => remember(code)}>{code}</a
 				>
 			</li>
 		{/each}

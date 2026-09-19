@@ -1,7 +1,6 @@
 <script lang="ts">
 	import favicon from '$lib/assets/favicon.svg';
 	import { onNavigate, afterNavigate } from '$app/navigation';
-	import NavMenu from '$lib/components/NavMenu.svelte';
 	import AsciiTransition from '$lib/components/AsciiTransition.svelte';
 
 	let { children } = $props();
@@ -20,7 +19,6 @@
 	<script defer src="https://umami.raqz.link/script.js" data-website-id="0172159a-2bdd-4c0c-9f10-65ed67c2f9a7"></script>
 </svelte:head>
 
-<NavMenu />
 {@render children()}
 <AsciiTransition bind:this={transition} />
 

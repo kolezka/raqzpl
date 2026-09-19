@@ -10,8 +10,26 @@ export const DEFAULT_LANG: Lang = 'en';
 /** Cookie that holds the choice. Readable by the browser, it carries no secret. */
 export const LANG_COOKIE = 'lang';
 
-/** Query parameter that switches the language, then is dropped by a redirect. */
-export const LANG_PARAM = 'lang';
+/** Canonical site origin, for absolute canonical and hreflang URLs. */
+export const SITE_URL = 'https://raqz.pl';
+
+/** Localized pages as language-independent paths. Drives the sitemap. */
+export const PAGE_PATHS = ['', '/projects', '/contact'] as const;
+
+/** Strips a leading `/en` or `/pl`, leaving `''` for the home page or `/projects`. */
+export function pathWithoutLang(pathname: string): string {
+	const segment = pathname.split('/')[1];
+	if (isLang(segment)) {
+		const rest = pathname.slice(segment.length + 1);
+		return rest === '/' ? '' : rest;
+	}
+	return pathname === '/' ? '' : pathname;
+}
+
+/** Builds a localized path: `withLang('pl', '/projects')` gives `/pl/projects`. */
+export function withLang(lang: Lang, rest: string): string {
+	return `/${lang}${rest}`;
+}
 
 export function isLang(value: string | null | undefined): value is Lang {
 	return value === 'en' || value === 'pl';
