@@ -13,7 +13,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 			path: '/',
 			maxAge: YEAR_SECONDS,
 			httpOnly: false,
-			sameSite: 'lax'
+			sameSite: 'lax',
+			// SvelteKit defaults `secure` to true off localhost. Over plain http on a LAN
+			// IP or behind an http proxy the browser then drops the cookie and the choice
+			// never sticks. Mark it secure only on https, where the browser keeps it.
+			secure: event.url.protocol === 'https:'
 		});
 
 		const target = new URL(event.url);
