@@ -41,7 +41,18 @@ export const handle: Handle = async ({ event, resolve }) => {
 		event.request.headers.get('accept-language')
 	);
 
-	return resolve(event, {
+	const response = await resolve(event, {
 		transformPageChunk: ({ html }) => html.replace('%lang%', event.locals.lang)
 	});
+
+	// The document is rendered for one language cookie, so no shared cache (CDN) and no
+	// browser may reuse one visitor's language for another. `private, no-cache` lets the
+	// browser keep it but revalidate every time, and `Vary: Cookie` stops any cache from
+	// serving one cookie's page to a different cookie. Without this a CDN that caches
+	// html serves a stale language and the switch looks broken.
+	if (response.headers.get('content-type')?.startsWith('text/html')) {
+		response.headers.set('cache-control', 'private, no-cache');
+		response.headers.append('vary', 'Cookie');
+	}
+	return response;
 };
