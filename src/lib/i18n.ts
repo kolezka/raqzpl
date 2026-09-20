@@ -7,9 +7,6 @@ export type Lang = (typeof LANGS)[number];
 
 export const DEFAULT_LANG: Lang = 'en';
 
-/** Cookie that holds the choice. Readable by the browser, it carries no secret. */
-export const LANG_COOKIE = 'lang';
-
 /** Canonical site origin, for absolute canonical and hreflang URLs. */
 export const SITE_URL = 'https://raqz.pl';
 
@@ -33,22 +30,6 @@ export function withLang(lang: Lang, rest: string): string {
 
 export function isLang(value: string | null | undefined): value is Lang {
 	return value === 'en' || value === 'pl';
-}
-
-/**
- * First the cookie, then `Accept-Language`, then English. Quality values are
- * ignored: the header lists the preferred languages first, which is enough for
- * a choice between two.
- */
-export function pickLang(cookie: string | undefined, acceptLanguage: string | null): Lang {
-	if (isLang(cookie)) return cookie;
-
-	for (const part of acceptLanguage?.split(',') ?? []) {
-		const base = part.split(';')[0].trim().slice(0, 2).toLowerCase();
-		if (isLang(base)) return base;
-	}
-
-	return DEFAULT_LANG;
 }
 
 type Strings = {
