@@ -4,6 +4,7 @@
 		AXIAL_TILT,
 		DEFAULT_COLS,
 		DEFAULT_ROWS,
+		fitGrid,
 		LABEL_SCALE,
 		renderBackdrop,
 		renderGlobe
@@ -108,8 +109,9 @@
 			const cell = probe.getBoundingClientRect();
 			const cellWidth = cell.width / PROBE_LENGTH;
 			if (cellWidth < 1 || cell.height < 1) return;
-			cols = Math.ceil(window.innerWidth / cellWidth / LABEL_SCALE) * LABEL_SCALE;
-			rows = Math.ceil(window.innerHeight / cell.height / LABEL_SCALE) * LABEL_SCALE;
+			const grid = fitGrid(window.innerWidth, window.innerHeight, cellWidth, cell.height);
+			cols = grid.cols;
+			rows = grid.rows;
 		};
 
 		// A new grid size rebuilds every cached buffer and the backdrop, so a drag of the
@@ -281,6 +283,12 @@
 		letter-spacing: 0;
 		white-space: pre;
 		user-select: none;
+		/* iOS Safari inflates text in a block as wide as the screen. It drew these layers
+		   at about twice the size the CSS asks for, so the grid came out half as wide and
+		   the title filled the phone edge to edge. Unprefixed first: iOS only reads the
+		   -webkit- line, and an unprefixed line after it would undo the fix. */
+		text-size-adjust: 100%;
+		-webkit-text-size-adjust: 100%;
 		/* Plain ASCII in a monospace face needs no kerning and no ligatures. Turning the
 		   lookups off cuts the cost of laying out tens of thousands of glyphs each frame
 		   and changes nothing on screen. */

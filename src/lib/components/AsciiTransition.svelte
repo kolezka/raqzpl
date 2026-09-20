@@ -161,6 +161,9 @@
 		letter-spacing: 0;
 		white-space: pre;
 		user-select: none;
+		/* The grid assumes a 14px cell. iOS Safari would inflate the text and break that. */
+		text-size-adjust: 100%;
+		-webkit-text-size-adjust: 100%;
 		color: rgba(255, 255, 255, 0.92);
 		text-shadow: 0 0 0.4em rgba(255, 255, 255, 0.25);
 	}
