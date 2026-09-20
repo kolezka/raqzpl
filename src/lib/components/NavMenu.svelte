@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { LANGS, t, pathWithoutLang, withLang, type Lang } from '$lib/i18n';
+	import { LANGS, t, pathWithoutLang, withLang } from '$lib/i18n';
 
 	const lang = $derived(page.data.lang);
 	const strings = $derived(t(lang));
@@ -14,13 +14,7 @@
 	]);
 
 	// The language is in the URL, so a switch is just a link to the same page under the
-	// other language. The cookie is only a preference the root redirect reads for a bare
-	// `/`. Setting it on the client keeps every page free of a `Set-Cookie` header, so the
-	// CDN can still cache the html.
-	function remember(code: Lang) {
-		const secure = location.protocol === 'https:' ? '; secure' : '';
-		document.cookie = `lang=${code}; path=/; max-age=31536000; samesite=lax${secure}`;
-	}
+	// other language. Every nav link carries the prefix, so language is fully URL-driven.
 </script>
 
 <nav class="nav" aria-label={strings.nav.primary}>
@@ -42,8 +36,7 @@
 					href={withLang(code, rest)}
 					class:active={code === lang}
 					aria-current={code === lang ? 'true' : undefined}
-					hreflang={code}
-					onclick={() => remember(code)}>{code}</a
+					hreflang={code}>{code}</a
 				>
 			</li>
 		{/each}
