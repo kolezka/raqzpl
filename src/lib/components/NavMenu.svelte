@@ -133,4 +133,61 @@
 			animation: none;
 		}
 	}
+
+	/* Below this width the page text runs the full window, so a nav stacked in the
+	   corner sits on top of the heading. Fold it into one bar across the top. The
+	   width is where a centred 44rem column still clears the stacked nav. */
+	@media (max-width: 959px) {
+		.nav {
+			top: 0;
+			left: 0;
+			right: 0;
+			box-sizing: border-box;
+			display: flex;
+			flex-wrap: wrap;
+			align-items: baseline;
+			gap: 1em;
+			padding: 0.6rem 0.9rem 1.2rem;
+			/* Shrinks with the window so the bar stays on one line down to 320px. Every
+			   size below is in em, so the whole bar scales with it. */
+			font-size: clamp(0.68rem, 3.4vw, 0.8rem);
+			/* Fades out instead of ending on a hard edge, which would cut a line across
+			   the globe on the home page. */
+			background: linear-gradient(to bottom, rgba(0, 0, 0, 0.92) 55%, rgba(0, 0, 0, 0));
+			/* iOS Safari inflates text in a block as wide as the screen, same trap as the
+			   globe grid. Unprefixed first: iOS only reads the -webkit- line. */
+			text-size-adjust: 100%;
+			-webkit-text-size-adjust: 100%;
+		}
+
+		.brand {
+			margin-bottom: 0;
+			font-size: 0.9em;
+		}
+
+		ul {
+			display: flex;
+			gap: 1em;
+		}
+
+		.langs {
+			margin-top: 0;
+			margin-left: auto;
+			padding-left: 0;
+			gap: 0.6em;
+			font-size: 0.85em;
+		}
+
+		/* A bar link is one line of small text, too little to hit with a thumb. The
+		   negative margin keeps the taller hit area from making the bar taller. */
+		a {
+			padding: 0.6em 0.2em;
+			margin: -0.6em -0.2em;
+		}
+
+		/* The caret needs a column of its own. On one line the colour marks the page. */
+		.mark {
+			display: none;
+		}
+	}
 </style>
