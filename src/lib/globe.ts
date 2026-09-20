@@ -69,6 +69,23 @@ const STAR_REFERENCE_ROWS = 64;
  */
 export const LABEL_SCALE = 3;
 
+/**
+ * Grid that covers a window of this size, rounded up to whole label cells so the
+ * label grid is exactly as large. Exported so the tests use the same geometry as the
+ * component instead of a copy of it.
+ */
+export function fitGrid(
+	windowWidth: number,
+	windowHeight: number,
+	cellWidth: number,
+	cellHeight: number
+): { cols: number; rows: number } {
+	return {
+		cols: Math.ceil(windowWidth / cellWidth / LABEL_SCALE) * LABEL_SCALE,
+		rows: Math.ceil(windowHeight / cellHeight / LABEL_SCALE) * LABEL_SCALE
+	};
+}
+
 /** Satellite bodies, then the trail behind them, brightest first. */
 const SATELLITE_GLYPHS = toCodes('oO');
 const SATELLITE_TRAIL = toCodes(',.');
