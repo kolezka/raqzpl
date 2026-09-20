@@ -45,6 +45,14 @@
 		padding: 7rem 1.5rem 4rem;
 	}
 
+	/* The nav is one bar across the top under 960px, so the text starts below the bar
+	   instead of beside the stacked nav. */
+	@media (max-width: 959px) {
+		:global(.view) {
+			padding-top: 4.5rem;
+		}
+	}
+
 	:global(.view-inner) {
 		width: 100%;
 		max-width: 44rem;
