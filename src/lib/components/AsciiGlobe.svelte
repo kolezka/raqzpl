@@ -7,8 +7,12 @@
 		fitGrid,
 		LABEL_SCALE,
 		renderBackdrop,
-		renderGlobe
+		renderGlobe,
+		renderGlobeCodes,
+		type GlobeOptions
 	} from '$lib/globe';
+	import { FramePacer } from '$lib/framePacer';
+	import { createGlyphPainter, type GlyphLayer, type GlyphPainter } from '$lib/glyphGrid';
 
 	interface Props {
 		/** Titles shown in the middle of the globe, one after the other. */
@@ -31,15 +35,6 @@
 		morphMs = 900
 	}: Props = $props();
 
-	/**
-	 * Frame pacing. Thirty per second while the device keeps up, which is already
-	 * lower than the display rate because the globe is coarse. A device that cannot
-	 * paint that fast is paced down to its own speed instead of queueing frames it
-	 * will never show, which is what made a laptop in low power mode stutter.
-	 */
-	const FAST_FRAME_MS = 1000 / 30;
-	const SLOW_FRAME_MS = 1000 / 12;
-
 	/** How far the pointer tips the globe, in radians. */
 	const MAX_PITCH = 0.3;
 	const MAX_YAW = 0.32;
@@ -54,10 +49,34 @@
 	/** Characters in the probe line. Only used to measure one character cell. */
 	const PROBE_LENGTH = 20;
 
+	/**
+	 * Colour and glow of each layer on the canvas. Same values as the `<pre>` rules in
+	 * the style block below, so the canvas and the server frame look alike.
+	 */
+	const OCEAN_COLOR: GlyphLayer['color'] = [1, 1, 1, 0.48];
+	const GRATICULE_COLOR: GlyphLayer['color'] = [1, 1, 1, 0.3];
+	const LAND_COLOR: GlyphLayer['color'] = [1, 1, 1, 0.95];
+	const LAND_GLOW = [{ blurEm: 0.4, alpha: 0.2 }];
+	const SATELLITE_COLOR: GlyphLayer['color'] = [1, 1, 1, 0.9];
+	const SATELLITE_GLOW = [{ blurEm: 0.6, alpha: 0.45 }];
+	const LABEL_COLOR: GlyphLayer['color'] = [1, 1, 1, 1];
+	const LABEL_GLOW = [
+		{ blurEm: 0.5, alpha: 0.55 },
+		{ blurEm: 1.5, alpha: 0.25 }
+	];
+
 	/** Grid size. The server uses the default, the browser fits it to the window. */
 	let cols = $state(DEFAULT_COLS);
 	let rows = $state(DEFAULT_ROWS);
 	let probe: HTMLPreElement | undefined = $state();
+	let canvas: HTMLCanvasElement | undefined = $state();
+
+	/**
+	 * True while the canvas draws the turning globe. The `<pre>` layers carry the
+	 * server frame, the still frame under reduced motion, and the animation on a
+	 * browser without WebGL2.
+	 */
+	let live = $state(false);
 
 	/** Stars and the glow round the disc only change when the grid does. */
 	const backdrop = $derived(renderBackdrop(cols, rows));
@@ -70,20 +89,21 @@
 	/** Milliseconds since the first frame. Drives the satellites. */
 	let clock = $state(0);
 
-	const frame = $derived(
-		renderGlobe({
-			angle,
-			pitch,
-			roll: AXIAL_TILT,
-			title: titles[titleIndex],
-			subtitle,
-			titleProgress,
-			seed,
-			time: clock,
-			cols,
-			rows
-		})
-	);
+	const options = $derived<GlobeOptions>({
+		angle,
+		pitch,
+		roll: AXIAL_TILT,
+		title: titles[titleIndex],
+		subtitle,
+		titleProgress,
+		seed,
+		time: clock,
+		cols,
+		rows
+	});
+
+	/** Text frame for the `<pre>` layers. Not built while the canvas is live. */
+	const frame = $derived(renderGlobe(options));
 
 	onMount(() => {
 		const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -91,15 +111,18 @@
 		let titleTimer = 0;
 		let fitRequest = 0;
 		let startedAt = 0;
-		let paintedAt = 0;
 		let targetPitch = 0;
 		let targetYaw = 0;
 		let easedPitch = 0;
 		let easedYaw = 0;
-		let frameMs = FAST_FRAME_MS;
-		let lastCallback = 0;
-		let frameCost = FAST_FRAME_MS;
-		let measuring = false;
+		let pacer = new FramePacer();
+		let painter: GlyphPainter | null = null;
+
+		const dropPainter = () => {
+			live = false;
+			painter?.dispose();
+			painter = null;
+		};
 
 		// The grid covers the whole window: stars reach both edges on a wide screen, and
 		// the globe, which keeps nine tenths of the grid height, fills a tall phone.
@@ -112,6 +135,16 @@
 			const grid = fitGrid(window.innerWidth, window.innerHeight, cellWidth, cell.height);
 			cols = grid.cols;
 			rows = grid.rows;
+			if (!painter) return;
+			// The font size follows the window too: `--cell-size` is set in vmin.
+			painter.resize(cols, rows, {
+				width: cellWidth,
+				height: cell.height,
+				fontPx: parseFloat(getComputedStyle(probe).fontSize),
+				dpr: window.devicePixelRatio
+			});
+			// A resized canvas is blank until it is painted again.
+			if (live) paintCanvas();
 		};
 
 		// A new grid size rebuilds every cached buffer and the backdrop, so a drag of the
@@ -124,6 +157,20 @@
 			});
 		};
 
+		// A window moved to a display with another pixel density changes the device
+		// cell size without a resize event. The query matches the current density and
+		// fires once when it changes, so it is armed again each time.
+		let densityQuery: MediaQueryList | null = null;
+		const onDensityChange = () => {
+			watchDensity();
+			queueFit();
+		};
+		const watchDensity = () => {
+			densityQuery?.removeEventListener('change', onDensityChange);
+			densityQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+			densityQuery.addEventListener('change', onDensityChange);
+		};
+
 		const onPointerMove = (event: PointerEvent) => {
 			if (motion.matches) return;
 			targetYaw = ((event.clientX / window.innerWidth) * 2 - 1) * MAX_YAW;
@@ -131,33 +178,39 @@
 			targetPitch = -((event.clientY / window.innerHeight) * 2 - 1) * MAX_PITCH;
 		};
 
+		const paintCanvas = () => {
+			if (!painter) return;
+			const codes = renderGlobeCodes(options);
+			const { cols, rows, labelCols, labelRows } = codes;
+			painter.draw([
+				{ codes: codes.ocean, cols, rows, scale: 1, color: OCEAN_COLOR },
+				{ codes: codes.graticule, cols, rows, scale: 1, color: GRATICULE_COLOR },
+				{ codes: codes.land, cols, rows, scale: 1, color: LAND_COLOR, glows: LAND_GLOW },
+				{
+					codes: codes.satellites,
+					cols,
+					rows,
+					scale: 1,
+					color: SATELLITE_COLOR,
+					glows: SATELLITE_GLOW
+				},
+				{
+					codes: codes.label,
+					cols: labelCols,
+					rows: labelRows,
+					scale: LABEL_SCALE,
+					color: LABEL_COLOR,
+					glows: LABEL_GLOW
+				}
+			]);
+		};
+
 		// Only runs when motion is allowed. It paints the turning globe, the moving
-		// satellites and the morphing title, throttled to frameMs.
+		// satellites and the morphing title, as often as the pacer allows.
 		const tick = (now: number) => {
 			request = requestAnimationFrame(tick);
-			if (startedAt === 0) {
-				startedAt = now;
-				lastCallback = now;
-			}
-			const sinceCallback = now - lastCallback;
-			lastCallback = now;
-
-			// The callback after a painted frame arrives once that frame is on screen, so
-			// the gap is what one frame really costs: our work plus layout and paint. Pace
-			// the next frame to that cost, between 30 and 12 per second.
-			if (measuring) {
-				measuring = false;
-				frameCost += (sinceCallback - frameCost) * 0.2;
-				if (frameCost > frameMs) frameMs = Math.min(SLOW_FRAME_MS, frameMs * 1.2);
-				else if (frameCost < frameMs * 0.5) frameMs = Math.max(FAST_FRAME_MS, frameMs / 1.2);
-			}
-
-			// The slack matters: two ticks of a 60Hz display are 33.32 ms, a hair under a
-			// 30 per second target, so an exact test skips every other pair and the globe
-			// runs at 20 per second instead of 30.
-			if (now - paintedAt < frameMs - 2) return;
-			paintedAt = now;
-			measuring = true;
+			if (startedAt === 0) startedAt = now;
+			if (!pacer.tick(now)) return;
 
 			const elapsed = now - startedAt;
 			const cycle = Math.floor(elapsed / swapMs);
@@ -170,6 +223,8 @@
 			clock = elapsed;
 			seed = cycle;
 			titleProgress = Math.min(1, (elapsed - cycle * swapMs) / morphMs);
+
+			if (live) paintCanvas();
 		};
 
 		const stop = () => {
@@ -185,6 +240,7 @@
 		const start = () => {
 			stop();
 			if (motion.matches) {
+				live = false;
 				angle = 0;
 				pitch = 0;
 				clock = 0;
@@ -195,15 +251,28 @@
 				}, swapMs);
 				return;
 			}
+			live = painter !== null;
 			startedAt = 0;
-			paintedAt = 0;
-			frameMs = FAST_FRAME_MS;
-			frameCost = FAST_FRAME_MS;
-			measuring = false;
+			pacer = new FramePacer();
 			request = requestAnimationFrame(tick);
 		};
 
+		if (canvas && probe) {
+			try {
+				painter = createGlyphPainter(canvas, { family: getComputedStyle(probe).fontFamily });
+			} catch (error) {
+				// A broken driver is not worth a blank page: the `<pre>` layers take over.
+				console.warn('Globe canvas unavailable, drawing with text layers', error);
+				painter = null;
+			}
+			canvas.addEventListener('webglcontextlost', (event) => {
+				event.preventDefault();
+				dropPainter();
+			});
+		}
+
 		fit();
+		watchDensity();
 		window.addEventListener('resize', queueFit, { passive: true });
 		window.addEventListener('pointermove', onPointerMove, { passive: true });
 		// Restart in the other mode when the user flips the reduced-motion setting.
@@ -212,9 +281,11 @@
 
 		return () => {
 			stop();
+			dropPainter();
 			if (fitRequest) cancelAnimationFrame(fitRequest);
 			window.removeEventListener('resize', queueFit);
 			window.removeEventListener('pointermove', onPointerMove);
+			densityQuery?.removeEventListener('change', onDensityChange);
 			motion.removeEventListener('change', start);
 		};
 	});
@@ -225,11 +296,14 @@
 	<pre class="haze" aria-hidden="true">{backdrop.haze}</pre>
 	<pre class="dim-stars" aria-hidden="true">{backdrop.dimStars}</pre>
 	<pre class="bright-stars" aria-hidden="true">{backdrop.brightStars}</pre>
-	<pre class="ocean" aria-hidden="true">{frame.ocean}</pre>
-	<pre class="graticule" aria-hidden="true">{frame.graticule}</pre>
-	<pre class="land" aria-hidden="true">{frame.land}</pre>
-	<pre class="satellites" aria-hidden="true">{frame.satellites}</pre>
-	<pre class="label" aria-hidden="true">{frame.label}</pre>
+	{#if !live}
+		<pre class="ocean" aria-hidden="true">{frame.ocean}</pre>
+		<pre class="graticule" aria-hidden="true">{frame.graticule}</pre>
+		<pre class="land" aria-hidden="true">{frame.land}</pre>
+		<pre class="satellites" aria-hidden="true">{frame.satellites}</pre>
+		<pre class="label" aria-hidden="true">{frame.label}</pre>
+	{/if}
+	<canvas class="glyphs" aria-hidden="true" hidden={!live} bind:this={canvas}></canvas>
 </div>
 <p class="reader-only">{titles.join(' / ')} — {subtitle}</p>
 
@@ -335,6 +409,16 @@
 	.land {
 		color: rgba(255, 255, 255, 0.95);
 		text-shadow: 0 0 0.4em rgba(255, 255, 255, 0.2);
+	}
+
+	/* The live globe. Sized by the painter to the same box as the text layers. */
+	.stack > .glyphs {
+		grid-area: 1 / 1;
+		display: block;
+	}
+
+	.stack > .glyphs[hidden] {
+		display: none;
 	}
 
 	/* Drawn on a coarser grid at a larger size, so the title stays readable when the

@@ -444,6 +444,23 @@ export interface GlobeOptions {
 	rows?: number;
 }
 
+/**
+ * One frame as character codes, one byte per cell, row by row. The buffers belong
+ * to the renderer and are rewritten by the next call, so read them before that.
+ * This is what a canvas painter wants: no strings to build, split or lay out.
+ */
+export interface GlobeCodes {
+	cols: number;
+	rows: number;
+	labelCols: number;
+	labelRows: number;
+	ocean: Uint8Array;
+	land: Uint8Array;
+	graticule: Uint8Array;
+	satellites: Uint8Array;
+	label: Uint8Array;
+}
+
 export interface GlobeFrame {
 	/** Water shading. Drawn dimmer than the land, which separates the two. */
 	ocean: string;
@@ -662,7 +679,7 @@ function stampSatellites(
 }
 
 /** Renders one globe frame as stacked layers. */
-export function renderGlobe(options: GlobeOptions): GlobeFrame {
+export function renderGlobeCodes(options: GlobeOptions): GlobeCodes {
 	const {
 		angle,
 		pitch = 0,
@@ -782,10 +799,26 @@ export function renderGlobe(options: GlobeOptions): GlobeFrame {
 	stampLabel(label, below, titleRow + 2, subtitle, grid);
 
 	return {
-		ocean: gridToString(ocean, grid.cols, grid.rows),
-		land: gridToString(land, grid.cols, grid.rows),
-		graticule: gridToString(graticule, grid.cols, grid.rows),
-		satellites: gridToString(satellites, grid.cols, grid.rows),
-		label: gridToString(label, grid.labelCols, grid.labelRows)
+		cols: grid.cols,
+		rows: grid.rows,
+		labelCols: grid.labelCols,
+		labelRows: grid.labelRows,
+		ocean,
+		land,
+		graticule,
+		satellites,
+		label
+	};
+}
+
+/** Same frame as text, one string per layer. The server and the `<pre>` layers use it. */
+export function renderGlobe(options: GlobeOptions): GlobeFrame {
+	const codes = renderGlobeCodes(options);
+	return {
+		ocean: gridToString(codes.ocean, codes.cols, codes.rows),
+		land: gridToString(codes.land, codes.cols, codes.rows),
+		graticule: gridToString(codes.graticule, codes.cols, codes.rows),
+		satellites: gridToString(codes.satellites, codes.cols, codes.rows),
+		label: gridToString(codes.label, codes.labelCols, codes.labelRows)
 	};
 }

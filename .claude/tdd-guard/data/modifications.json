@@ -1,0 +1,12 @@
+{
+  "session_id": "cbd3c09d-76e5-4176-8485-d95c0d25f41f",
+  "transcript_path": "/home/me/.claude/projects/-home-me-jean-raqzpl-ultra-newt/cbd3c09d-76e5-4176-8485-d95c0d25f41f.jsonl",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Edit",
+  "tool_input": {
+    "file_path": "/tmp/globe-perf/trace.mjs",
+    "old_string": "\targs: ['--enable-gpu-rasterization', '--ignore-gpu-blocklist']",
+    "new_string": "\targs: process.env.GPU\n\t\t? [\n\t\t\t\t'--use-angle=vulkan',\n\t\t\t\t'--enable-features=Vulkan',\n\t\t\t\t'--ignore-gpu-blocklist',\n\t\t\t\t'--enable-gpu-rasterization',\n\t\t\t\t'--enable-accelerated-2d-canvas'\n\t\t\t]\n\t\t: ['--enable-gpu-rasterization', '--ignore-gpu-blocklist']",
+    "replace_all": false
+  }
+}
