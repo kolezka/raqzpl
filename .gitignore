@@ -24,3 +24,6 @@ vite.config.ts.timestamp-*
 
 # AI tooling scratch (kept local, not tracked)
 .ai/
+
+# Claude Code tdd-guard hook scratch (kept local, not tracked)
+.claude/tdd-guard/
