@@ -1,0 +1,34 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { Server } from '../.svelte-kit/output/server/index.js';
+import { manifest } from '../.svelte-kit/output/server/manifest.js';
+
+// Run after pnpm run build to exercise the actual Svelte SSR output.
+const server = new Server(manifest);
+await server.init({ env: process.env });
+
+for (const lang of ['en', 'pl']) {
+	test(`${lang} portfolio keeps private projects visible without source links`, async () => {
+		const response = await server.respond(new Request(`http://localhost/${lang}/projects`), {
+			getClientAddress: () => '127.0.0.1'
+		});
+		assert.equal(response.status, 200);
+		const html = await response.text();
+		const cards = [...html.matchAll(/<li\b[^>]*class="card(?: [^"]*)?"[^>]*>([\s\S]*?)<\/li>/g)].map(
+			(match) => match[1]
+		);
+		assert.equal(cards.length, 18);
+		for (const name of ['Docify', 'agent-fleet', 'tg-spy', 'kb']) {
+			const card = cards.find((content) => content.includes(`> ${name}</span>`));
+			assert.ok(card, `${name} must remain visible`);
+			assert.doesNotMatch(card, /<a\b/, `${name} must not expose an unavailable source link`);
+			assert.match(card, /<p class="tagline(?: [^"]*)?">[^<]+<\/p>/);
+		}
+		assert.match(html, /href="https:\/\/github.com\/kolezka\/renthunter"/);
+		assert.match(html, /href="https:\/\/ghcards.raqz.link"/);
+		assert.match(html, lang === 'en' ? /Version-aware documentation search/ : /Wyszukiwanie dokumentacji/);
+		for (const name of ['docker-deepseek-harness', 'tmuxaxxing', 'cwelux', 'claude-agents-def', 'repo-intel']) {
+			assert.ok(!cards.some((card) => card.includes(`> ${name}</span>`)), `${name} must stay removed`);
+		}
+	});
+}

@@ -6,14 +6,39 @@
 		name: string;
 		tagline: Record<Lang, string>;
 		stack: string[];
-		href: string;
+		href?: string;
 		live?: string;
 	};
 
 	const strings = $derived(t(page.data.lang));
 
-	// Public repos from github.com/kolezka, hand-picked. New additions go first, newest first.
+	// Curated projects. Only public repositories get a source link.
 	const projects: Project[] = [
+		{
+			name: 'Docify',
+			tagline: {
+				en: 'Version-aware documentation search for AI coding agents, serving cited, token-bounded excerpts over MCP instead of entire documentation pages.',
+				pl: 'Wyszukiwanie dokumentacji dla agentów AI z uwzględnieniem wersji bibliotek. Zwraca przez MCP fragmenty ze źródłami i limitem tokenów zamiast całych stron.'
+			},
+			stack: ['typescript', 'svelte', 'mcp']
+		},
+		{
+			name: 'agent-fleet',
+			tagline: {
+				en: 'Supervision for autonomous Claude Code agents in tmux, with a watchdog, supervisor handoffs and advisors for long-running work.',
+				pl: 'Nadzór nad autonomicznymi agentami Claude Code w tmux: watchdog, przekazywanie nadzoru i agenci doradczy przy długotrwałych zadaniach.'
+			},
+			stack: ['shell', 'tmux', 'claude code']
+		},
+		{
+			name: 'RentHunter',
+			tagline: {
+				en: 'Self-hosted rental search for Poland’s Tricity: collects listings from OLX, Otodom and trojmiasto.pl, scores them with AI and sends notifications.',
+				pl: 'Samodzielnie hostowana wyszukiwarka wynajmu w Trójmieście: zbiera ogłoszenia z OLX, Otodom i trojmiasto.pl, ocenia je przez AI i wysyła powiadomienia.'
+			},
+			stack: ['bun', 'svelte', 'postgres', 'drizzle', 'deepseek'],
+			href: 'https://github.com/kolezka/renthunter'
+		},
 		{
 			name: 'claude-stealth-search-plugin',
 			tagline: {
@@ -83,8 +108,7 @@
 				en: 'Telegram crawler that maps group and channel membership and activity, with recursive link discovery.',
 				pl: 'Crawler Telegrama, który mapuje członkostwo i aktywność w grupach oraz kanałach, z rekurencyjnym wykrywaniem linków.'
 			},
-			stack: ['bun', 'mtcute', 'postgres', 'sveltekit'],
-			href: 'https://github.com/kolezka/tg-spy'
+			stack: ['bun', 'mtcute', 'postgres', 'sveltekit']
 		},
 		{
 			name: 'subagent-router',
@@ -110,8 +134,7 @@
 				en: 'Personal knowledge base: markdown vault, hybrid search over Weaviate and Postgres, code and concept graph, CLI and MCP server for agents.',
 				pl: 'Osobista baza wiedzy: repozytorium markdown, wyszukiwanie hybrydowe na Weaviate i Postgresie, graf kodu i pojęć, CLI oraz serwer MCP dla agentów.'
 			},
-			stack: ['typescript', 'weaviate', 'postgres', 'mcp'],
-			href: 'https://github.com/kolezka/kb'
+			stack: ['typescript', 'weaviate', 'postgres', 'mcp']
 		},
 		{
 			name: 'NL5H00X',
@@ -174,9 +197,11 @@
 									>{strings.projects.live} ↗</a
 								>
 							{/if}
-							<a class="link" href={project.href} target="_blank" rel="noreferrer"
-								>{strings.projects.code} ↗</a
-							>
+							{#if project.href}
+								<a class="link" href={project.href} target="_blank" rel="noreferrer"
+									>{strings.projects.code} ↗</a
+								>
+							{/if}
 						</span>
 					</div>
 					<p class="tagline">{project.tagline[page.data.lang]}</p>
