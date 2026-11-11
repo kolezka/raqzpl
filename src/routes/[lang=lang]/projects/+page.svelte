@@ -12,8 +12,107 @@
 
 	const strings = $derived(t(page.data.lang));
 
-	// Public repos from github.com/kolezka, hand-picked. Keep this list short.
+	// Public repos from github.com/kolezka, hand-picked. New additions go first, newest first.
 	const projects: Project[] = [
+		{
+			name: 'claude-stealth-search-plugin',
+			tagline: {
+				en: 'Claude Code web search and page reading through self-hosted SearXNG and Crawl4AI, without hosted search APIs.',
+				pl: 'Wyszukiwanie w sieci i odczyt stron w Claude Code przez samodzielnie hostowane SearXNG i Crawl4AI, bez zewnętrznych API wyszukiwania.'
+			},
+			stack: ['typescript', 'claude code', 'searxng', 'crawl4ai'],
+			href: 'https://github.com/kolezka/claude-stealth-search-plugin'
+		},
+		{
+			name: 'design-studio',
+			tagline: {
+				en: 'Design and redesign interfaces as HTML drafts compared on a local canvas, without an external design service.',
+				pl: 'Projektowanie i przeprojektowywanie interfejsów jako szkiców HTML porównywanych na lokalnym płótnie, bez zewnętrznej usługi projektowej.'
+			},
+			stack: ['typescript', 'html', 'claude code'],
+			href: 'https://github.com/kolezka/design-studio'
+		},
+		{
+			name: 'claude-plugins-dsh',
+			tagline: {
+				en: 'Compatibility runtime for running unmodified Claude Code plugins inside DeepSeek Harness.',
+				pl: 'Warstwa zgodności pozwalająca uruchamiać niezmodyfikowane wtyczki Claude Code w DeepSeek Harness.'
+			},
+			stack: ['typescript', 'javascript', 'dsh'],
+			href: 'https://github.com/kolezka/claude-plugins-dsh'
+		},
+		{
+			name: 'CALM',
+			tagline: {
+				en: 'Proof-of-concept infinite canvas for macOS: arrange live Ghostty terminals, browser panels and plugins like a whiteboard.',
+				pl: 'Prototyp nieskończonego płótna dla macOS: układaj terminale Ghostty, panele przeglądarki i wtyczki jak na tablicy.'
+			},
+			stack: ['rust', 'macos', 'ghostty'],
+			href: 'https://github.com/kolezka/CALM'
+		},
+		{
+			name: 'docker-deepseek-harness',
+			tagline: {
+				en: 'Hardened Docker setup for the DeepSeek Harness web UI.',
+				pl: 'Konfiguracja Dockera ze wzmocnionymi zabezpieczeniami dla interfejsu webowego DeepSeek Harness.'
+			},
+			stack: ['docker', 'shell', 'dsh'],
+			href: 'https://github.com/kolezka/docker-deepseek-harness'
+		},
+		{
+			name: 'tmuxaxxing',
+			tagline: {
+				en: 'tmux sidebars for many Claude Code sessions, with agent status, approvals, GitHub pull requests and a plugin layer.',
+				pl: 'Panele boczne tmux dla wielu sesji Claude Code: status agentów, zgody, pull requesty GitHuba i warstwa wtyczek.'
+			},
+			stack: ['typescript', 'shell', 'tmux', 'claude code'],
+			href: 'https://github.com/kolezka/tmuxaxxing'
+		},
+		{
+			name: 'cwelux',
+			tagline: {
+				en: 'A macOS menu-bar app for managing local tmux sessions, built with Bun and Tauri.',
+				pl: 'Aplikacja na pasku menu macOS do zarządzania lokalnymi sesjami tmux, zbudowana na Bun i Tauri.'
+			},
+			stack: ['rust', 'typescript', 'bun', 'tauri'],
+			href: 'https://github.com/kolezka/cwelux'
+		},
+		{
+			name: 'claude-performance-analyzer',
+			tagline: {
+				en: 'macOS menu-bar widget and local dashboard for Claude Code performance, from model latency to hooks, tools and MCP startup.',
+				pl: 'Widżet na pasku menu macOS i lokalny panel wydajności Claude Code: opóźnienia modeli, hooki, narzędzia i start serwerów MCP.'
+			},
+			stack: ['typescript', 'swift', 'svelte', 'opentelemetry'],
+			href: 'https://github.com/kolezka/claude-performance-analyzer'
+		},
+		{
+			name: 'claude-agents-def',
+			tagline: {
+				en: 'Role-based subagents for orchestrating engineering work in Claude Code.',
+				pl: 'Subagenci o określonych rolach do koordynowania prac inżynierskich w Claude Code.'
+			},
+			stack: ['javascript', 'claude code'],
+			href: 'https://github.com/kolezka/claude-agents-def'
+		},
+		{
+			name: 'repo-intel',
+			tagline: {
+				en: 'Claude Code plugin that installs codegraph and graphify, routes agents to the right graph and builds indexes on your own LLM backend.',
+				pl: 'Wtyczka Claude Code, która instaluje codegraph i graphify, kieruje agentów do właściwego grafu i buduje indeksy na własnym backendzie LLM.'
+			},
+			stack: ['shell', 'claude code', 'codegraph', 'graphify'],
+			href: 'https://github.com/kolezka/repo-intel'
+		},
+		{
+			name: 'worklog-persist',
+			tagline: {
+				en: 'Durable work-state for coding agents in Outline: task context, verified checkpoints, handoffs and completion records across sessions.',
+				pl: 'Trwały stan pracy agentów programistycznych w Outline: kontekst zadań, zweryfikowane punkty kontrolne, przekazanie pracy i wyniki między sesjami.'
+			},
+			stack: ['typescript', 'shell', 'claude code', 'outline'],
+			href: 'https://github.com/kolezka/worklog-persist'
+		},
 		{
 			name: 'tg-viewer',
 			tagline: {
