@@ -51,33 +51,6 @@
 			href: 'https://github.com/kolezka/CALM'
 		},
 		{
-			name: 'docker-deepseek-harness',
-			tagline: {
-				en: 'Hardened Docker setup for the DeepSeek Harness web UI.',
-				pl: 'Konfiguracja Dockera ze wzmocnionymi zabezpieczeniami dla interfejsu webowego DeepSeek Harness.'
-			},
-			stack: ['docker', 'shell', 'dsh'],
-			href: 'https://github.com/kolezka/docker-deepseek-harness'
-		},
-		{
-			name: 'tmuxaxxing',
-			tagline: {
-				en: 'tmux sidebars for many Claude Code sessions, with agent status, approvals, GitHub pull requests and a plugin layer.',
-				pl: 'Panele boczne tmux dla wielu sesji Claude Code: status agentów, zgody, pull requesty GitHuba i warstwa wtyczek.'
-			},
-			stack: ['typescript', 'shell', 'tmux', 'claude code'],
-			href: 'https://github.com/kolezka/tmuxaxxing'
-		},
-		{
-			name: 'cwelux',
-			tagline: {
-				en: 'A macOS menu-bar app for managing local tmux sessions, built with Bun and Tauri.',
-				pl: 'Aplikacja na pasku menu macOS do zarządzania lokalnymi sesjami tmux, zbudowana na Bun i Tauri.'
-			},
-			stack: ['rust', 'typescript', 'bun', 'tauri'],
-			href: 'https://github.com/kolezka/cwelux'
-		},
-		{
 			name: 'claude-performance-analyzer',
 			tagline: {
 				en: 'macOS menu-bar widget and local dashboard for Claude Code performance, from model latency to hooks, tools and MCP startup.',
@@ -85,24 +58,6 @@
 			},
 			stack: ['typescript', 'swift', 'svelte', 'opentelemetry'],
 			href: 'https://github.com/kolezka/claude-performance-analyzer'
-		},
-		{
-			name: 'claude-agents-def',
-			tagline: {
-				en: 'Role-based subagents for orchestrating engineering work in Claude Code.',
-				pl: 'Subagenci o określonych rolach do koordynowania prac inżynierskich w Claude Code.'
-			},
-			stack: ['javascript', 'claude code'],
-			href: 'https://github.com/kolezka/claude-agents-def'
-		},
-		{
-			name: 'repo-intel',
-			tagline: {
-				en: 'Claude Code plugin that installs codegraph and graphify, routes agents to the right graph and builds indexes on your own LLM backend.',
-				pl: 'Wtyczka Claude Code, która instaluje codegraph i graphify, kieruje agentów do właściwego grafu i buduje indeksy na własnym backendzie LLM.'
-			},
-			stack: ['shell', 'claude code', 'codegraph', 'graphify'],
-			href: 'https://github.com/kolezka/repo-intel'
 		},
 		{
 			name: 'worklog-persist',
