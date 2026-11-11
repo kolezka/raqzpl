@@ -23,6 +23,14 @@
 			stack: ['typescript', 'svelte', 'mcp']
 		},
 		{
+			name: 'fleet-control',
+			tagline: {
+				en: 'Web control panel, API and MCP service for agent-fleet: live read-only terminals, model visibility, approval requests and command tracking backed by SQLite.',
+				pl: 'Panel webowy, API i serwer MCP dla agent-fleet: podgląd terminali na żywo, informacje o modelach, zatwierdzanie próśb i śledzenie poleceń ze stanem w SQLite.'
+			},
+			stack: ['typescript', 'bun', 'sqlite', 'mcp']
+		},
+		{
 			name: 'agent-fleet',
 			tagline: {
 				en: 'Supervision for autonomous Claude Code agents in tmux, with a watchdog, supervisor handoffs and advisors for long-running work.',

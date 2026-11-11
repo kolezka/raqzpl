@@ -17,8 +17,8 @@ for (const lang of ['en', 'pl']) {
 		const cards = [...html.matchAll(/<li\b[^>]*class="card(?: [^"]*)?"[^>]*>([\s\S]*?)<\/li>/g)].map(
 			(match) => match[1]
 		);
-		assert.equal(cards.length, 18);
-		for (const name of ['Docify', 'agent-fleet', 'tg-spy', 'kb']) {
+		assert.equal(cards.length, 19);
+		for (const name of ['Docify', 'fleet-control', 'agent-fleet', 'tg-spy', 'kb']) {
 			const card = cards.find((content) => content.includes(`> ${name}</span>`));
 			assert.ok(card, `${name} must remain visible`);
 			assert.doesNotMatch(card, /<a\b/, `${name} must not expose an unavailable source link`);
