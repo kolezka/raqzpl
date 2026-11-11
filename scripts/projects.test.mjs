@@ -26,7 +26,16 @@ for (const lang of ['en', 'pl']) {
 		}
 		assert.match(html, /href="https:\/\/github.com\/kolezka\/renthunter"/);
 		assert.match(html, /href="https:\/\/ghcards.raqz.link"/);
-		assert.match(html, lang === 'en' ? /Version-aware documentation search/ : /Wyszukiwanie dokumentacji/);
+		const docify = cards.find((card) => card.includes('> Docify</span>'));
+		for (const mechanism of [/FTS5\/BM25/, /API/, /embedding/i, /MCP/]) {
+			assert.match(docify, mechanism, `Docify must explain ${mechanism} in ${lang}`);
+		}
+		assert.match(docify, lang === 'en' ? /rank fusion/ : /fuzję rankingów/);
+		assert.match(docify, lang === 'en' ? /atomically activated/ : /atomowa aktywacja/);
+		for (const card of cards) {
+			const description = card.match(/<p class="tagline(?: [^"]*)?">([^<]+)<\/p>/)?.[1];
+			assert.ok(description?.trim(), 'Every project must have a rendered description');
+		}
 		for (const name of ['docker-deepseek-harness', 'tmuxaxxing', 'cwelux', 'claude-agents-def', 'repo-intel']) {
 			assert.ok(!cards.some((card) => card.includes(`> ${name}</span>`)), `${name} must stay removed`);
 		}
