@@ -1,5 +1,4 @@
 <script lang="ts">
-	import favicon from '$lib/assets/favicon.svg';
 	import { onNavigate, afterNavigate } from '$app/navigation';
 	import AsciiTransition from '$lib/components/AsciiTransition.svelte';
 
@@ -15,7 +14,8 @@
 </script>
 
 <svelte:head>
-	<link rel="icon" href={favicon} />
+	<!-- A real URL, not an inlined data URI: Google only shows crawlable favicons. -->
+	<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 	<script defer src="https://umami.raqz.link/script.js" data-website-id="0172159a-2bdd-4c0c-9f10-65ed67c2f9a7"></script>
 	<script defer src="https://umami.raqz.link/recorder.js" data-website-id="0172159a-2bdd-4c0c-9f10-65ed67c2f9a7"></script>
 </svelte:head>

@@ -2,7 +2,8 @@
 	import { page } from '$app/state';
 	import Colophon from '$lib/components/Colophon.svelte';
 	import Masthead from '$lib/components/Masthead.svelte';
-	import { LANGS, DEFAULT_LANG, SITE_URL, pathWithoutLang } from '$lib/i18n';
+	import { LANGS, SITE_URL, pathWithoutLang } from '$lib/i18n';
+	import { SITE_NAME, alternateLinks, ogLocale } from '$lib/seo';
 
 	let { children } = $props();
 
@@ -21,10 +22,17 @@
 
 <svelte:head>
 	<link rel="canonical" href={canonical} />
-	{#each LANGS as code (code)}
-		<link rel="alternate" hreflang={code} href={`${SITE_URL}/${code}${rest}`} />
+	{#each alternateLinks(rest) as link (link.hreflang)}
+		<link rel="alternate" hreflang={link.hreflang} href={link.href} />
 	{/each}
-	<link rel="alternate" hreflang="x-default" href={`${SITE_URL}/${DEFAULT_LANG}${rest}`} />
+	<meta property="og:type" content="website" />
+	<meta property="og:site_name" content={SITE_NAME} />
+	<meta property="og:url" content={canonical} />
+	<meta property="og:locale" content={ogLocale(page.data.lang)} />
+	{#each LANGS.filter((code) => code !== page.data.lang) as code (code)}
+		<meta property="og:locale:alternate" content={ogLocale(code)} />
+	{/each}
+	<meta name="twitter:card" content="summary" />
 </svelte:head>
 
 {#if isHome}

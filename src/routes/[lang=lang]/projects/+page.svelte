@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import PageMeta from '$lib/components/PageMeta.svelte';
 	import { t } from '$lib/i18n';
 	import { projectAnchor, projectCounts, projects } from '$lib/projects';
 
@@ -7,10 +8,7 @@
 	const strings = $derived(t(lang));
 </script>
 
-<svelte:head>
-	<title>{strings.projects.title}</title>
-	<meta name="description" content={strings.projects.description} />
-</svelte:head>
+<PageMeta title={strings.projects.title} description={strings.projects.description} />
 
 <h1 class="page-title">{strings.projects.heading}</h1>
 <p class="lead">{strings.projects.lead}</p>
