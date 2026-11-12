@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { LANGS, t, pathWithoutLang, withLang } from '$lib/i18n';
+	import { LANGS, t, pathWithoutLang, withLang, type Lang } from '$lib/i18n';
 
 	const lang = $derived(page.data.lang);
 	const strings = $derived(t(lang));
 	// The language-independent tail of the path, so a switch stays on the same page.
+	// Pages whose path differs per language pass their own.
 	const rest = $derived(pathWithoutLang(page.url.pathname));
+	const pathFor = (code: Lang) => page.data.paths?.[code] ?? rest;
 
 	const items = $derived([
 		{ href: withLang(lang, ''), label: strings.nav.home },
@@ -32,7 +34,7 @@
 			{#each LANGS as code (code)}
 				<li>
 					<a
-						href={withLang(code, rest)}
+						href={withLang(code, pathFor(code))}
 						aria-current={code === lang ? 'true' : undefined}
 						hreflang={code}>{code}</a
 					>

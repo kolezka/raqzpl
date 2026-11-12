@@ -20,12 +20,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 		const isAsset = pathname.startsWith('/_app/') || /\.[a-z0-9]+$/i.test(pathname);
 		if (!isAsset) {
 			// 301, deterministic and cacheable: the same old URL always maps to the same
-			// localized one. `/` becomes `/en`, `/projects` becomes `/en/projects`.
+			// localized one. `/` becomes `/en`, `/projects` becomes `/en/projects`. Old pages
+			// ended in `/`; dropping it here saves the router a second redirect.
+			const rest = pathname.replace(/\/+$/, '');
 			return new Response(null, {
 				status: 301,
-				headers: {
-					location: `/${DEFAULT_LANG}${pathname === '/' ? '' : pathname}${search}`
-				}
+				headers: { location: `/${DEFAULT_LANG}${rest}${search}` }
 			});
 		}
 

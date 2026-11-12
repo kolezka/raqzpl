@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { existsSync } from 'node:fs';
-import { alternateLinks, jsonLdScript, llmsTxt, ogLocale, siteJsonLd, sitemapXml } from './seo';
+import {
+	alternateLinks,
+	jsonLdScript,
+	llmsTxt,
+	ogLocale,
+	serviceJsonLd,
+	siteJsonLd,
+	sitemapXml
+} from './seo';
 import { LANGS, PAGE_PATHS, t } from './i18n';
 import { projects } from './projects';
+import { allServicePaths } from './services';
 
 describe('sitemapXml', () => {
 	const xml = sitemapXml();
@@ -10,8 +19,12 @@ describe('sitemapXml', () => {
 
 	it('lists every page in every language, each with all alternates', () => {
 		const locs = urls.map((url) => url.match(/<loc>(.*?)<\/loc>/)?.[1]);
+		const pages = [
+			...PAGE_PATHS.map((path) => ({ en: path, pl: path })),
+			...allServicePaths()
+		];
 		expect(locs.sort()).toEqual(
-			PAGE_PATHS.flatMap((path) => LANGS.map((lang) => `https://raqz.pl/${lang}${path}`)).sort()
+			pages.flatMap((paths) => LANGS.map((lang) => `https://raqz.pl/${lang}${paths[lang]}`)).sort()
 		);
 		for (const url of urls) {
 			expect(url.match(/hreflang="(.*?)"/g)).toEqual([
@@ -94,6 +107,19 @@ describe('siteJsonLd', () => {
 			expect.arrayContaining(['https://github.com/kolezka'])
 		);
 		expect(site?.publisher).toEqual({ '@id': person?.['@id'] });
+	});
+});
+
+describe('serviceJsonLd', () => {
+	it('describes a service offered by the site owner', () => {
+		expect(serviceJsonLd('Boty Telegram', 'opis', 'https://raqz.pl/pl/uslugi/boty-telegram')).toEqual({
+			'@context': 'https://schema.org',
+			'@type': 'Service',
+			name: 'Boty Telegram',
+			description: 'opis',
+			url: 'https://raqz.pl/pl/uslugi/boty-telegram',
+			provider: { '@type': 'Person', name: 'Mariusz Rakus', url: 'https://raqz.pl' }
+		});
 	});
 });
 
