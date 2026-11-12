@@ -9,6 +9,7 @@
 		renderBackdrop,
 		renderGlobe,
 		renderGlobeCodes,
+		type GlobeMetrics,
 		type GlobeOptions
 	} from '$lib/globe';
 	import { FramePacer } from '$lib/framePacer';
@@ -25,6 +26,12 @@
 		swapMs?: number;
 		/** Time the title needs to settle out of the scrambled characters. */
 		morphMs?: number;
+		/** Soft glow round land, satellites and title. Off on a page that sets text over the globe. */
+		glow?: boolean;
+		/** Title and subtitle in the middle of the disc. Off when the page has its own heading. */
+		showLabel?: boolean;
+		/** Grid the globe is drawn on, filled in once the browser has measured it. */
+		metrics?: GlobeMetrics | null;
 	}
 
 	let {
@@ -32,7 +39,10 @@
 		subtitle = 'Mariusz Rakus',
 		turnMs = 28000,
 		swapMs = 3600,
-		morphMs = 900
+		morphMs = 900,
+		glow = true,
+		showLabel = true,
+		metrics = $bindable(null)
 	}: Props = $props();
 
 	/** How far the pointer tips the globe, in radians. */
@@ -93,8 +103,8 @@
 		angle,
 		pitch,
 		roll: AXIAL_TILT,
-		title: titles[titleIndex],
-		subtitle,
+		title: showLabel ? titles[titleIndex] : '',
+		subtitle: showLabel ? subtitle : '',
 		titleProgress,
 		seed,
 		time: clock,
@@ -135,6 +145,13 @@
 			const grid = fitGrid(window.innerWidth, window.innerHeight, cellWidth, cell.height);
 			cols = grid.cols;
 			rows = grid.rows;
+			metrics = {
+				cols,
+				rows,
+				cellWidth,
+				cellHeight: cell.height,
+				fontPx: parseFloat(getComputedStyle(probe).fontSize)
+			};
 			if (!painter) return;
 			// The font size follows the window too: `--cell-size` is set in vmin.
 			painter.resize(cols, rows, {
@@ -185,14 +202,14 @@
 			painter.draw([
 				{ codes: codes.ocean, cols, rows, scale: 1, color: OCEAN_COLOR },
 				{ codes: codes.graticule, cols, rows, scale: 1, color: GRATICULE_COLOR },
-				{ codes: codes.land, cols, rows, scale: 1, color: LAND_COLOR, glows: LAND_GLOW },
+				{ codes: codes.land, cols, rows, scale: 1, color: LAND_COLOR, glows: glow ? LAND_GLOW : [] },
 				{
 					codes: codes.satellites,
 					cols,
 					rows,
 					scale: 1,
 					color: SATELLITE_COLOR,
-					glows: SATELLITE_GLOW
+					glows: glow ? SATELLITE_GLOW : []
 				},
 				{
 					codes: codes.label,
@@ -200,7 +217,7 @@
 					rows: labelRows,
 					scale: LABEL_SCALE,
 					color: LABEL_COLOR,
-					glows: LABEL_GLOW
+					glows: glow ? LABEL_GLOW : []
 				}
 			]);
 		};
@@ -292,7 +309,7 @@
 </script>
 
 <pre class="probe" aria-hidden="true" bind:this={probe}>{'M'.repeat(PROBE_LENGTH)}</pre>
-<div class="stack" style:--label-scale={LABEL_SCALE}>
+<div class="stack" class:flat={!glow} style:--label-scale={LABEL_SCALE}>
 	<pre class="haze" aria-hidden="true">{backdrop.haze}</pre>
 	<pre class="dim-stars" aria-hidden="true">{backdrop.dimStars}</pre>
 	<pre class="bright-stars" aria-hidden="true">{backdrop.brightStars}</pre>
@@ -305,7 +322,9 @@
 	{/if}
 	<canvas class="glyphs" aria-hidden="true" hidden={!live} bind:this={canvas}></canvas>
 </div>
-<p class="reader-only">{titles.join(' / ')} — {subtitle}</p>
+{#if showLabel}
+	<p class="reader-only">{titles.join(' / ')} — {subtitle}</p>
+{/if}
 
 <style>
 	.stack {
@@ -439,6 +458,11 @@
 		to {
 			opacity: 1;
 		}
+	}
+
+	/* Text set over the globe reads better without the halo round each glyph. */
+	.stack.flat > pre {
+		text-shadow: none;
 	}
 
 	/* Readable by a screen reader, invisible on screen. */

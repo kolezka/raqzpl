@@ -421,6 +421,15 @@ const SATELLITES: readonly Orbit[] = [
 	{ radius: 1.04, inclination: -0.2, node: -0.9, periodMs: 17800, phase: 0.15, body: 0, trail: 2 }
 ];
 
+/** Grid a globe is drawn on in the browser, measured from its character cell. */
+export interface GlobeMetrics {
+	cols: number;
+	rows: number;
+	cellWidth: number;
+	cellHeight: number;
+	fontPx: number;
+}
+
 export interface GlobeOptions {
 	/** Rotation around the polar axis, in radians. */
 	angle: number;
@@ -555,6 +564,8 @@ function stampLabel(
 	text: string,
 	{ cols, rows, labelCols }: Layout
 ): void {
+	// No text, no box: a globe without a label keeps its middle drawn.
+	if (!text) return;
 	const padded = `  ${text}  `;
 	const start = Math.round((labelCols - padded.length) / 2);
 	for (let i = 0; i < padded.length; i++) {
@@ -579,6 +590,56 @@ function stampLabel(
  * Renders the still backdrop: stars and the glow around the disc. Neither depends on
  * the rotation, so this only runs again when the grid size changes.
  */
+/**
+ * One roll per cell picks both the star and its brightness, so the sky keeps the same
+ * pattern on the server and in the browser, and below the globe.
+ */
+function placeStar(
+	dimStars: Uint8Array,
+	brightStars: Uint8Array,
+	cell: number,
+	x: number,
+	y: number,
+	density: number
+): void {
+	const roll = hash2(x, y) / density;
+	if (roll < 0.0036) brightStars[cell] = BRIGHT_STARS[1];
+	else if (roll < 0.0085) brightStars[cell] = BRIGHT_STARS[0];
+	else if (roll < 0.0125) brightStars[cell] = BRIGHT_STARS[2];
+	else if (roll < 0.0455) dimStars[cell] = DIM_STARS[0];
+	else if (roll < 0.065) dimStars[cell] = DIM_STARS[1];
+}
+
+/**
+ * Stars for rows of the same grid that lie outside it, from `firstRow` down. A page
+ * draws them under the globe so the sky runs on past the first screen without a seam.
+ * Same origin and density as the backdrop of a `cols` by `rows` grid.
+ */
+export function renderSkyRows(
+	cols: number,
+	rows: number,
+	firstRow: number,
+	count: number
+): { dimStars: string; brightStars: string } {
+	const grid = useLayout(cols, rows);
+	const originX = Math.round(grid.centerX);
+	const originY = Math.round(grid.centerY);
+	const starDensity = Math.min(1, (STAR_REFERENCE_ROWS / grid.rows) ** 2);
+	const lines = Math.max(0, Math.floor(count));
+	const dimStars = new Uint8Array(grid.cols * lines).fill(SPACE);
+	const brightStars = new Uint8Array(grid.cols * lines).fill(SPACE);
+	for (let line = 0; line < lines; line++) {
+		const row = firstRow + line;
+		for (let col = 0; col < grid.cols; col++) {
+			placeStar(dimStars, brightStars, line * grid.cols + col, col - originX, row - originY, starDensity);
+		}
+	}
+	return {
+		dimStars: gridToString(dimStars, grid.cols, lines),
+		brightStars: gridToString(brightStars, grid.cols, lines)
+	};
+}
+
 export function renderBackdrop(cols = DEFAULT_COLS, rows = DEFAULT_ROWS): Backdrop {
 	const grid = useLayout(cols, rows);
 	const { centerX, centerY, radiusX, radiusY, cellCount } = grid;
@@ -609,14 +670,7 @@ export function renderBackdrop(cols = DEFAULT_COLS, rows = DEFAULT_ROWS): Backdr
 				continue;
 			}
 
-			// One roll per cell picks both the star and its brightness, so the sky
-			// keeps the same pattern on the server and in the browser.
-			const roll = hash2(col - originX, row - originY) / starDensity;
-			if (roll < 0.0036) brightStars[cell] = BRIGHT_STARS[1];
-			else if (roll < 0.0085) brightStars[cell] = BRIGHT_STARS[0];
-			else if (roll < 0.0125) brightStars[cell] = BRIGHT_STARS[2];
-			else if (roll < 0.0455) dimStars[cell] = DIM_STARS[0];
-			else if (roll < 0.065) dimStars[cell] = DIM_STARS[1];
+			placeStar(dimStars, brightStars, cell, col - originX, row - originY, starDensity);
 		}
 	}
 
