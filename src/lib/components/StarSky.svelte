@@ -33,7 +33,7 @@
 	});
 </script>
 
-<div class="sky" aria-hidden="true" bind:clientWidth={width}>
+<div class="sky" aria-hidden="true" data-nosnippet bind:clientWidth={width}>
 	{#if sky}
 		<pre class="dim" style:top="{sky.top}px" style:left="{sky.left}px" style:font-size="{sky.fontPx}px"
 			>{sky.dimStars}</pre>

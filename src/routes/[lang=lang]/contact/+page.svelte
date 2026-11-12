@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
+	import PageMeta from '$lib/components/PageMeta.svelte';
 	import { t } from '$lib/i18n';
+	import { PROFILES } from '$lib/seo';
 	import type { ActionData } from './$types';
 
 	let { form }: { form: ActionData } = $props();
@@ -12,20 +14,17 @@
 
 	const channels = [
 		{ label: 'email', value: 'hello@raqz.pl', href: 'mailto:hello@raqz.pl', external: false },
-		{ label: 'github', value: 'github.com/kolezka', href: 'https://github.com/kolezka', external: true },
+		{ label: 'github', value: 'github.com/kolezka', href: PROFILES.github, external: true },
 		{
 			label: 'linkedin',
 			value: 'in/mariusz-rakus',
-			href: 'https://www.linkedin.com/in/mariusz-rakus/',
+			href: PROFILES.linkedin,
 			external: true
 		}
 	];
 </script>
 
-<svelte:head>
-	<title>{strings.contact.title}</title>
-	<meta name="description" content={strings.contact.description} />
-</svelte:head>
+<PageMeta title={strings.contact.title} description={strings.contact.description} />
 
 <h1 class="page-title">{strings.contact.heading}</h1>
 <p class="lead">{strings.contact.lead}</p>

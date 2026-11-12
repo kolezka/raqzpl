@@ -71,6 +71,7 @@ type Strings = {
 		errorMessage: string;
 		errorServer: string;
 	};
+	error: { notFound: string; generic: string; back: string };
 };
 
 const en: Strings = {
@@ -82,16 +83,18 @@ const en: Strings = {
 		language: 'Language'
 	},
 	home: {
-		title: 'raqz.pl — Mariusz Rakus',
-		description: 'raqz.pl, raqz.dev, raqz.link, raqz.app, raqz.contact — Mariusz Rakus',
+		title: 'Mariusz Rakus · tools for coding agents and self-hosting',
+		description:
+			"I'm Mariusz Rakus. I build tools for coding agents, run my own infrastructure and take apart hardware I own. Projects, source code and contact.",
 		heading: 'Things I build and maintain.',
 		lead: 'I build tools for coding agents, run my own infrastructure, and take apart hardware I own.',
 		selectedWork: 'selected work',
 		allProjects: (total) => `all ${total} projects →`
 	},
 	projects: {
-		title: 'projects — raqz.pl',
-		description: 'Projects by Mariusz Rakus',
+		title: 'Projects · Mariusz Rakus',
+		description:
+			'Projects by Mariusz Rakus: Claude Code plugins, tools for coding agents, self-hosted services and hardware experiments, with source code and live demos.',
 		heading: 'projects',
 		lead: 'Things I build and maintain.',
 		live: 'live',
@@ -101,8 +104,9 @@ const en: Strings = {
 		counts: (total, withSource, live) => `${total} projects · ${withSource} with source · ${live} live`
 	},
 	contact: {
-		title: 'contact — raqz.pl',
-		description: 'Contact Mariusz Rakus',
+		title: 'Contact · Mariusz Rakus',
+		description:
+			'Get in touch with Mariusz Rakus by email, on GitHub or LinkedIn, or send a message through the form on this page.',
 		heading: 'contact',
 		lead: 'Reach me on any of these.',
 		channels: 'channels',
@@ -117,7 +121,8 @@ const en: Strings = {
 		errorEmail: 'Give an email address I can answer.',
 		errorMessage: 'Write a message, 5000 characters at most.',
 		errorServer: 'The mail server refused the message. Try again later.'
-	}
+	},
+	error: { notFound: 'page not found', generic: 'something went wrong', back: 'back home' }
 };
 
 const pl: Strings = {
@@ -129,16 +134,18 @@ const pl: Strings = {
 		language: 'Język'
 	},
 	home: {
-		title: 'raqz.pl — Mariusz Rakus',
-		description: 'raqz.pl, raqz.dev, raqz.link, raqz.app, raqz.contact — Mariusz Rakus',
+		title: 'Mariusz Rakus · narzędzia dla agentów programistycznych',
+		description:
+			'Jestem Mariusz Rakus. Buduję narzędzia dla agentów programistycznych, utrzymuję własną infrastrukturę i rozbieram własny sprzęt. Projekty, kod i kontakt.',
 		heading: 'Rzeczy, które buduję i utrzymuję.',
 		lead: 'Buduję narzędzia dla agentów programistycznych, utrzymuję własną infrastrukturę i rozbieram na części własny sprzęt.',
 		selectedWork: 'wybrane projekty',
 		allProjects: (total) => `wszystkie projekty (${total}) →`
 	},
 	projects: {
-		title: 'projekty — raqz.pl',
-		description: 'Projekty Mariusza Rakusa',
+		title: 'Projekty · Mariusz Rakus',
+		description:
+			'Projekty Mariusza Rakusa: wtyczki do Claude Code, narzędzia dla agentów programistycznych, usługi self-hosted i eksperymenty ze sprzętem.',
 		heading: 'projekty',
 		lead: 'Rzeczy, które buduję i utrzymuję.',
 		live: 'demo',
@@ -149,8 +156,9 @@ const pl: Strings = {
 		counts: (total, withSource, live) => `projekty: ${total} · z kodem: ${withSource} · demo: ${live}`
 	},
 	contact: {
-		title: 'kontakt — raqz.pl',
-		description: 'Kontakt do Mariusza Rakusa',
+		title: 'Kontakt · Mariusz Rakus',
+		description:
+			'Napisz do Mariusza Rakusa: email, GitHub, LinkedIn albo formularz kontaktowy na tej stronie.',
 		heading: 'kontakt',
 		lead: 'Napisz na dowolnym z tych kanałów.',
 		channels: 'kanały',
@@ -165,7 +173,8 @@ const pl: Strings = {
 		errorEmail: 'Podaj adres email, na który mogę odpowiedzieć.',
 		errorMessage: 'Napisz wiadomość, maksymalnie 5000 znaków.',
 		errorServer: 'Serwer pocztowy odrzucił wiadomość. Spróbuj ponownie później.'
-	}
+	},
+	error: { notFound: 'nie ma takiej strony', generic: 'coś poszło nie tak', back: 'wróć na start' }
 };
 
 const dictionaries: Record<Lang, Strings> = { en, pl };

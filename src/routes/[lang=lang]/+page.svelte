@@ -2,11 +2,13 @@
 	import AsciiGlobe from '$lib/components/AsciiGlobe.svelte';
 	import Colophon from '$lib/components/Colophon.svelte';
 	import Masthead from '$lib/components/Masthead.svelte';
+	import PageMeta from '$lib/components/PageMeta.svelte';
 	import StarSky from '$lib/components/StarSky.svelte';
 	import { page } from '$app/state';
 	import { t, withLang } from '$lib/i18n';
 	import { featuredProjects, projectAnchor, projectCounts } from '$lib/projects';
 	import type { GlobeMetrics } from '$lib/globe';
+	import { jsonLdScript, siteJsonLd } from '$lib/seo';
 
 	const lang = $derived(page.data.lang);
 	const strings = $derived(t(lang));
@@ -16,13 +18,14 @@
 	let restHeight = $state(0);
 </script>
 
+<PageMeta title={strings.home.title} description={strings.home.description} />
+
 <svelte:head>
-	<title>{strings.home.title}</title>
-	<meta name="description" content={strings.home.description} />
+	{@html jsonLdScript(siteJsonLd(lang))}
 </svelte:head>
 
 <section class="hero" bind:offsetHeight={heroHeight}>
-	<div class="globe">
+	<div class="globe" data-nosnippet>
 		<AsciiGlobe glow={false} showLabel={false} bind:metrics />
 	</div>
 	<div class="page hero-inner">

@@ -1,4 +1,5 @@
-import { DEFAULT_LANG, LANGS, PAGE_PATHS, SITE_URL } from '$lib/i18n';
+import { LANGS, PAGE_PATHS, SITE_URL } from '$lib/i18n';
+import { alternateLinks } from '$lib/seo';
 import type { RequestHandler } from './$types';
 
 // One entry per language per page. Each entry lists every language plus `x-default` as
@@ -6,12 +7,10 @@ import type { RequestHandler } from './$types';
 export const GET: RequestHandler = () => {
 	const entries = PAGE_PATHS.flatMap((path) =>
 		LANGS.map((lang) => {
-			const alternates = LANGS.map(
-				(code) =>
-					`<xhtml:link rel="alternate" hreflang="${code}" href="${SITE_URL}/${code}${path}"/>`
-			).join('');
-			const xDefault = `<xhtml:link rel="alternate" hreflang="x-default" href="${SITE_URL}/${DEFAULT_LANG}${path}"/>`;
-			return `<url><loc>${SITE_URL}/${lang}${path}</loc>${alternates}${xDefault}</url>`;
+			const alternates = alternateLinks(path)
+				.map((link) => `<xhtml:link rel="alternate" hreflang="${link.hreflang}" href="${link.href}"/>`)
+				.join('');
+			return `<url><loc>${SITE_URL}/${lang}${path}</loc>${alternates}</url>`;
 		})
 	);
 
