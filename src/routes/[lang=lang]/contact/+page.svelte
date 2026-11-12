@@ -11,16 +11,15 @@
 	const strings = $derived(t(page.data.lang));
 
 	const channels = [
-		{ label: 'email', value: 'hello@raqz.pl', href: 'mailto:hello@raqz.pl' },
-		{ label: 'github', value: 'github.com/kolezka', href: 'https://github.com/kolezka' },
+		{ label: 'email', value: 'hello@raqz.pl', href: 'mailto:hello@raqz.pl', external: false },
+		{ label: 'github', value: 'github.com/kolezka', href: 'https://github.com/kolezka', external: true },
 		{
 			label: 'linkedin',
 			value: 'in/mariusz-rakus',
-			href: 'https://www.linkedin.com/in/mariusz-rakus/'
+			href: 'https://www.linkedin.com/in/mariusz-rakus/',
+			external: true
 		}
 	];
-
-	const domains = ['raqz.pl', 'raqz.dev', 'raqz.link', 'raqz.app', 'raqz.contact'];
 </script>
 
 <svelte:head>
@@ -28,147 +27,131 @@
 	<meta name="description" content={strings.contact.description} />
 </svelte:head>
 
-<section class="view">
-	<div class="view-inner">
-		<h1>{strings.contact.heading}</h1>
-		<p class="lead">{strings.contact.lead}</p>
+<h1 class="page-title">{strings.contact.heading}</h1>
+<p class="lead">{strings.contact.lead}</p>
 
-		<ul class="rows">
-			{#each channels as channel (channel.label)}
-				<li>
-					<span class="k">{channel.label}</span>
-					<a class="link" href={channel.href} target="_blank" rel="noreferrer">{channel.value}</a>
-				</li>
-			{/each}
-		</ul>
+<h2 class="section"><span>{strings.contact.channels}</span></h2>
+<dl class="channels">
+	{#each channels as channel (channel.label)}
+		<dt>{channel.label}</dt>
+		<dd>
+			{#if channel.external}
+				<a href={channel.href} target="_blank" rel="noreferrer">{channel.value}</a>
+				<span class="ext">↗</span>
+			{:else}
+				<a href={channel.href}>{channel.value}</a>
+			{/if}
+		</dd>
+	{/each}
+</dl>
 
-		<h2>{strings.contact.formHeading}</h2>
+<h2 class="section"><span>{strings.contact.formHeading}</span></h2>
 
-		{#if form?.success}
-			<p class="note ok">{strings.contact.sent}</p>
-		{:else}
-			<form
-				method="POST"
-				use:enhance={() => {
-					sending = true;
-					return async ({ update }) => {
-						await update();
-						sending = false;
-					};
-				}}
+{#if form?.success}
+	<p class="sent" role="status">{strings.contact.sent}</p>
+{:else}
+	<form
+		method="POST"
+		use:enhance={() => {
+			sending = true;
+			return async ({ update }) => {
+				await update();
+				sending = false;
+			};
+		}}
+	>
+		<label>
+			<span>{strings.contact.name}</span>
+			<input name="name" type="text" maxlength="120" required value={form?.values?.name ?? ''} />
+		</label>
+
+		<label>
+			<span>{strings.contact.email}</span>
+			<input name="email" type="email" maxlength="254" required value={form?.values?.email ?? ''} />
+		</label>
+
+		<label>
+			<span>{strings.contact.message}</span>
+			<textarea name="message" rows="6" maxlength="5000" required
+				>{form?.values?.message ?? ''}</textarea
 			>
-				<label>
-					<span class="k">{strings.contact.name}</span>
-					<input name="name" type="text" maxlength="120" required value={form?.values?.name ?? ''} />
-				</label>
+		</label>
 
-				<label>
-					<span class="k">{strings.contact.email}</span>
-					<input
-						name="email"
-						type="email"
-						maxlength="254"
-						required
-						value={form?.values?.email ?? ''}
-					/>
-				</label>
+		<!-- Honeypot. Hidden from people, tempting to bots. -->
+		<input class="trap" name="company" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" />
 
-				<label>
-					<span class="k">{strings.contact.message}</span>
-					<textarea name="message" rows="6" maxlength="5000" required
-						>{form?.values?.message ?? ''}</textarea
-					>
-				</label>
-
-				<!-- Honeypot. Hidden from people, tempting to bots. -->
-				<input
-					class="trap"
-					name="company"
-					type="text"
-					tabindex="-1"
-					autocomplete="off"
-					aria-hidden="true"
-				/>
-
-				{#if form?.error}
-					<p class="note error">{form.error}</p>
-				{/if}
-
-				<button type="submit" disabled={sending}
-					>{sending ? strings.contact.sending : strings.contact.send}</button
-				>
-			</form>
+		{#if form?.error}
+			<p class="error" role="alert">{form.error}</p>
 		{/if}
 
-		<p class="domains muted">{domains.join('  ·  ')}</p>
-	</div>
-</section>
+		<button type="submit" disabled={sending}
+			>{sending ? strings.contact.sending : strings.contact.send}</button
+		>
+	</form>
+{/if}
 
 <style>
-	.rows {
-		margin: 0;
-		padding: 0;
-		list-style: none;
+	.channels {
+		display: grid;
+		grid-template-columns: 110px minmax(0, 1fr);
 	}
 
-	.rows li {
-		display: flex;
-		gap: 1.5rem;
-		padding: 0.55rem 0;
-		border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+	dt,
+	dd {
+		padding: 12px 0;
+		border-bottom: 1px solid var(--line);
 	}
 
-	.k {
-		width: 6rem;
-		align-self: center;
-		color: rgba(255, 255, 255, 0.4);
-		font-size: 0.8rem;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
+	dt {
+		padding-top: 16px;
+		font: 12px var(--mono);
+		color: var(--muted);
 	}
 
-	h2 {
-		margin: 2.5rem 0 1rem;
-		font-size: 0.8rem;
-		font-weight: 600;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: rgba(255, 255, 255, 0.4);
+	dd {
+		font-size: 20px;
+		overflow-wrap: anywhere;
+	}
+
+	.ext {
+		font: 12px var(--mono);
+		color: var(--faint);
 	}
 
 	form {
-		display: flex;
-		flex-direction: column;
-		gap: 0.9rem;
+		display: grid;
+		gap: 22px;
+		margin-top: 24px;
 	}
 
 	label {
-		display: flex;
-		flex-direction: column;
-		gap: 0.4rem;
+		display: grid;
+		gap: 4px;
 	}
 
-	label .k {
-		width: auto;
+	label span {
+		font: 11px var(--mono);
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--muted);
 	}
 
 	input,
 	textarea {
-		box-sizing: border-box;
 		width: 100%;
-		padding: 0.6rem 0.7rem;
-		background: transparent;
-		border: 1px solid rgba(255, 255, 255, 0.18);
-		color: #ffffff;
+		padding: 10px 12px;
+		border: 1px solid var(--line);
+		border-radius: 2px;
+		background: var(--field);
+		color: var(--fg);
 		font: inherit;
 		resize: vertical;
-		transition: border-color 0.15s ease;
 	}
 
 	input:focus,
 	textarea:focus {
-		outline: none;
-		border-color: rgba(255, 255, 255, 0.7);
+		outline: 2px solid var(--acc);
+		outline-offset: 1px;
 	}
 
 	.trap {
@@ -179,43 +162,44 @@
 	}
 
 	button {
-		align-self: flex-start;
-		padding: 0.6rem 1.2rem;
-		background: transparent;
-		border: 1px solid rgba(255, 255, 255, 0.35);
-		color: #ffffff;
-		font: inherit;
+		justify-self: start;
+		padding: 11px 22px;
+		border: 0;
+		border-radius: 2px;
+		background: var(--acc);
+		color: var(--bg);
+		font: 14px var(--mono);
 		cursor: pointer;
-		transition:
-			border-color 0.15s ease,
-			background 0.15s ease;
-	}
-
-	button:hover:not(:disabled) {
-		border-color: #ffffff;
-		background: rgba(255, 255, 255, 0.06);
 	}
 
 	button:disabled {
 		cursor: default;
-		opacity: 0.5;
+		opacity: 0.6;
 	}
 
-	.note {
-		margin: 0;
-		font-size: 0.9rem;
+	.error {
+		color: var(--err);
 	}
 
-	.note.ok {
-		color: rgba(255, 255, 255, 0.8);
+	.sent {
+		margin-top: 24px;
+		padding: 16px 0;
+		border-top: 2px solid var(--acc);
+		font-size: 20px;
 	}
 
-	.note.error {
-		color: #ff8a8a;
-	}
+	@media (max-width: 640px) {
+		.channels {
+			grid-template-columns: 1fr;
+		}
 
-	.domains {
-		margin-top: 2rem;
-		font-size: 0.85rem;
+		dt {
+			padding: 12px 0 0;
+			border: 0;
+		}
+
+		dd {
+			padding-top: 0;
+		}
 	}
 </style>

@@ -24,69 +24,131 @@
 <AsciiTransition bind:this={transition} />
 
 <style>
-	:global(html, body) {
-		margin: 0;
-		padding: 0;
-		background: #000000;
-		color: #ffffff;
+	/* Paper design system, see .design/design-system.md. Warm ink by default, paper in light mode. */
+	:global(:root) {
+		color-scheme: dark;
+		--bg: #16140f;
+		--fg: #ece5d6;
+		--muted: #a69d8b;
+		--faint: #6b6456;
+		--line: #37322a;
+		--acc: #e3825a;
+		--err: #f0937e;
+		--field: #1d1a14;
+		--serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+		--mono: ui-monospace, 'SFMono-Regular', 'Menlo', 'Consolas', monospace;
+		/* The globe draws white glyphs. Light mode turns them to ink with this filter. */
+		--night-filter: none;
 	}
 
-	:global(body) {
-		font-family: ui-monospace, 'SFMono-Regular', 'Menlo', 'Consolas', monospace;
-	}
-
-	/* Shared shell for the text views (projects, contact). The globe page does not use
-	   it: it fills the window itself. */
-	:global(.view) {
-		display: flex;
-		justify-content: center;
-		box-sizing: border-box;
-		min-height: 100dvh;
-		padding: 7rem 1.5rem 4rem;
-	}
-
-	/* The nav is one bar across the top under 960px, so the text starts below the bar
-	   instead of beside the stacked nav. */
-	@media (max-width: 959px) {
-		:global(.view) {
-			padding-top: 4.5rem;
+	@media (prefers-color-scheme: light) {
+		:global(:root) {
+			color-scheme: light;
+			--bg: #f4efe4;
+			--fg: #1f1c17;
+			--muted: #655e52;
+			--faint: #9b9384;
+			--line: #d9d0bd;
+			--acc: #b2431b;
+			--err: #a3261a;
+			--field: #fbf8f1;
+			--night-filter: invert(1);
 		}
 	}
 
-	:global(.view-inner) {
-		width: 100%;
-		max-width: 44rem;
+	:global(html, body) {
+		margin: 0;
+		padding: 0;
+		background: var(--bg);
+		color: var(--fg);
 	}
 
-	:global(.view h1) {
-		margin: 0 0 0.25rem;
-		font-size: 1.6rem;
-		font-weight: 600;
-		letter-spacing: 0.06em;
+	:global(body) {
+		font: 17px/1.6 var(--serif);
+	}
+
+	:global(*, *::before, *::after) {
+		box-sizing: border-box;
+	}
+
+	:global(h1, h2, h3, p, ul, ol, dl, dd) {
+		margin: 0;
+		padding: 0;
+	}
+
+	:global(ul, ol) {
+		list-style: none;
+	}
+
+	:global(a) {
+		color: var(--fg);
+		text-decoration: underline;
+		text-decoration-color: var(--faint);
+		text-underline-offset: 3px;
+	}
+
+	:global(a:hover) {
+		color: var(--acc);
+		text-decoration-color: var(--acc);
+	}
+
+	:global(a:focus-visible, button:focus-visible) {
+		outline: 2px solid var(--acc);
+		outline-offset: 3px;
+	}
+
+	/* One reading column, shared by every page. */
+	:global(.page) {
+		max-width: 720px;
+		margin: 0 auto;
+		padding: 48px 24px 96px;
+	}
+
+	:global(.page-title) {
+		margin: 56px 0 16px;
+		font-size: clamp(40px, 7vw, 60px);
+		line-height: 1.04;
+		font-weight: 400;
+		letter-spacing: -0.02em;
+	}
+
+	:global(.lead) {
+		max-width: 32ch;
+		font-size: 20px;
+		color: var(--muted);
+	}
+
+	:global(.mono) {
+		font-family: var(--mono);
+	}
+
+	/* Section heading: small caps-like mono label with a rule under it. */
+	:global(.section) {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: 16px;
+		margin: 64px 0 0;
+		padding-bottom: 10px;
+		border-bottom: 1px solid var(--line);
+		font: 400 13px/1.6 var(--mono);
+		letter-spacing: 0.12em;
 		text-transform: uppercase;
-		text-shadow: 0 0 0.6em rgba(255, 255, 255, 0.35);
+		color: var(--muted);
 	}
 
-	:global(.view .lead) {
-		margin: 0 0 2rem;
-		color: rgba(255, 255, 255, 0.5);
+	:global(.section a) {
+		letter-spacing: 0;
+		text-transform: none;
 	}
 
-	:global(.view a.link) {
-		color: rgba(255, 255, 255, 0.8);
-		text-decoration: none;
-		border-bottom: 1px solid rgba(255, 255, 255, 0.25);
-		transition:
-			color 0.15s ease,
-			border-color 0.15s ease;
-	}
+	@media (max-width: 640px) {
+		:global(.page) {
+			padding: 20px 18px 72px;
+		}
 
-	:global(.view a.link:hover) {
-		color: #ffffff;
-		border-color: rgba(255, 255, 255, 0.7);
-	}
-
-	:global(.view .muted) {
-		color: rgba(255, 255, 255, 0.4);
+		:global(.page-title) {
+			margin-top: 36px;
+		}
 	}
 </style>

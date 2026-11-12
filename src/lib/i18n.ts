@@ -34,13 +34,31 @@ export function isLang(value: string | null | undefined): value is Lang {
 
 type Strings = {
 	nav: { home: string; projects: string; contact: string; primary: string; language: string };
-	home: { title: string; description: string };
-	projects: { title: string; description: string; heading: string; lead: string; live: string; code: string };
+	home: {
+		title: string;
+		description: string;
+		heading: string;
+		lead: string;
+		selectedWork: string;
+		allProjects: (total: number) => string;
+	};
+	projects: {
+		title: string;
+		description: string;
+		heading: string;
+		lead: string;
+		live: string;
+		code: string;
+		private: string;
+		allWork: string;
+		counts: (total: number, withSource: number, live: number) => string;
+	};
 	contact: {
 		title: string;
 		description: string;
 		heading: string;
 		lead: string;
+		channels: string;
 		formHeading: string;
 		name: string;
 		email: string;
@@ -65,7 +83,11 @@ const en: Strings = {
 	},
 	home: {
 		title: 'raqz.pl — Mariusz Rakus',
-		description: 'raqz.pl, raqz.dev, raqz.link, raqz.app, raqz.contact — Mariusz Rakus'
+		description: 'raqz.pl, raqz.dev, raqz.link, raqz.app, raqz.contact — Mariusz Rakus',
+		heading: 'Things I build and maintain.',
+		lead: 'I build tools for coding agents, run my own infrastructure, and take apart hardware I own.',
+		selectedWork: 'selected work',
+		allProjects: (total) => `all ${total} projects →`
 	},
 	projects: {
 		title: 'projects — raqz.pl',
@@ -73,13 +95,17 @@ const en: Strings = {
 		heading: 'projects',
 		lead: 'Things I build and maintain.',
 		live: 'live',
-		code: 'code'
+		code: 'code',
+		private: 'private',
+		allWork: 'all work',
+		counts: (total, withSource, live) => `${total} projects · ${withSource} with source · ${live} live`
 	},
 	contact: {
 		title: 'contact — raqz.pl',
 		description: 'Contact Mariusz Rakus',
 		heading: 'contact',
 		lead: 'Reach me on any of these.',
+		channels: 'channels',
 		formHeading: 'send a message',
 		name: 'name',
 		email: 'email',
@@ -104,7 +130,11 @@ const pl: Strings = {
 	},
 	home: {
 		title: 'raqz.pl — Mariusz Rakus',
-		description: 'raqz.pl, raqz.dev, raqz.link, raqz.app, raqz.contact — Mariusz Rakus'
+		description: 'raqz.pl, raqz.dev, raqz.link, raqz.app, raqz.contact — Mariusz Rakus',
+		heading: 'Rzeczy, które buduję i utrzymuję.',
+		lead: 'Buduję narzędzia dla agentów programistycznych, utrzymuję własną infrastrukturę i rozbieram na części własny sprzęt.',
+		selectedWork: 'wybrane projekty',
+		allProjects: (total) => `wszystkie projekty (${total}) →`
 	},
 	projects: {
 		title: 'projekty — raqz.pl',
@@ -112,13 +142,18 @@ const pl: Strings = {
 		heading: 'projekty',
 		lead: 'Rzeczy, które buduję i utrzymuję.',
 		live: 'demo',
-		code: 'kod'
+		code: 'kod',
+		private: 'prywatny',
+		allWork: 'wszystkie',
+		// Labels before numbers, so Polish needs no plural forms.
+		counts: (total, withSource, live) => `projekty: ${total} · z kodem: ${withSource} · demo: ${live}`
 	},
 	contact: {
 		title: 'kontakt — raqz.pl',
 		description: 'Kontakt do Mariusza Rakusa',
 		heading: 'kontakt',
 		lead: 'Napisz na dowolnym z tych kanałów.',
+		channels: 'kanały',
 		formHeading: 'wyślij wiadomość',
 		name: 'imię',
 		email: 'email',
