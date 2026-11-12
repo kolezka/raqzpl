@@ -131,7 +131,7 @@
 	class="overlay"
 	class:active
 	aria-hidden="true"
-	style:background={`rgba(0, 0, 0, ${active ? fill : 0})`}
+	style:--fill={active ? fill : 0}
 >
 	<pre>{grid}</pre>
 </div>
@@ -144,6 +144,8 @@
 		overflow: hidden;
 		pointer-events: none;
 		visibility: hidden;
+		/* Page background, faded in with the cover, so it matches the theme. */
+		background: color-mix(in srgb, var(--bg) calc(var(--fill, 0) * 100%), transparent);
 	}
 
 	.overlay.active {
@@ -164,7 +166,7 @@
 		/* The grid assumes a 14px cell. iOS Safari would inflate the text and break that. */
 		text-size-adjust: 100%;
 		-webkit-text-size-adjust: 100%;
-		color: rgba(255, 255, 255, 0.92);
-		text-shadow: 0 0 0.4em rgba(255, 255, 255, 0.25);
+		color: var(--fg);
+		opacity: 0.92;
 	}
 </style>
