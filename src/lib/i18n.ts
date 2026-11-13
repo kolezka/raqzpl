@@ -72,6 +72,20 @@ type Strings = {
 		errorServer: string;
 	};
 	error: { notFound: string; generic: string; back: string };
+	services: {
+		title: string;
+		description: string;
+		heading: string;
+		lead: string;
+		list: string;
+		offer: string;
+		approach: string;
+		examples: string;
+		start: string;
+		cta: string;
+		ctaLink: string;
+		more: string;
+	};
 };
 
 const en: Strings = {
@@ -122,7 +136,22 @@ const en: Strings = {
 		errorMessage: 'Write a message, 5000 characters at most.',
 		errorServer: 'The mail server refused the message. Try again later.'
 	},
-	error: { notFound: 'page not found', generic: 'something went wrong', back: 'back home' }
+	error: { notFound: 'page not found', generic: 'something went wrong', back: 'back home' },
+	services: {
+		title: 'Services · Mariusz Rakus',
+		description:
+			'Telegram and Discord bots and AI integrations, built in TypeScript with tests and deployed on your own server. Tell me what you need.',
+		heading: 'services',
+		lead: 'Bots and AI integrations I build for other people.',
+		list: 'services',
+		offer: 'what I build',
+		approach: 'how I work',
+		examples: 'related projects',
+		start: 'start',
+		cta: 'Write what the bot or integration should do. I answer from hello@raqz.pl.',
+		ctaLink: 'contact form →',
+		more: 'other services'
+	}
 };
 
 const pl: Strings = {
@@ -174,7 +203,22 @@ const pl: Strings = {
 		errorMessage: 'Napisz wiadomość, maksymalnie 5000 znaków.',
 		errorServer: 'Serwer pocztowy odrzucił wiadomość. Spróbuj ponownie później.'
 	},
-	error: { notFound: 'nie ma takiej strony', generic: 'coś poszło nie tak', back: 'wróć na start' }
+	error: { notFound: 'nie ma takiej strony', generic: 'coś poszło nie tak', back: 'wróć na start' },
+	services: {
+		title: 'Usługi · Mariusz Rakus',
+		description:
+			'Boty Telegram i Discord oraz integracje AI. Buduję je w TypeScript, z testami i wdrożeniem na Twoim serwerze. Napisz, czego potrzebujesz.',
+		heading: 'usługi',
+		lead: 'Boty i integracje AI, które buduję dla innych.',
+		list: 'usługi',
+		offer: 'co buduję',
+		approach: 'jak pracuję',
+		examples: 'powiązane projekty',
+		start: 'start',
+		cta: 'Napisz, co bot albo integracja ma robić. Odpowiadam z hello@raqz.pl.',
+		ctaLink: 'formularz kontaktowy →',
+		more: 'pozostałe usługi'
+	}
 };
 
 const dictionaries: Record<Lang, Strings> = { en, pl };

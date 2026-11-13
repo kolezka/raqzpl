@@ -43,6 +43,17 @@ describe('language routing', () => {
 		expect(response.headers.get('location')).toBe('/en/contact?ref=x');
 	});
 
+	// Old pages used trailing slashes. Dropping it here saves a second (308) hop.
+	it('drops the trailing slash of an old URL in the same redirect', async () => {
+		const response = await handle({
+			event: fakeEvent('https://raqz.pl/services/ai-integrations/') as never,
+			resolve
+		});
+
+		expect(response.status).toBe(301);
+		expect(response.headers.get('location')).toBe('/en/services/ai-integrations');
+	});
+
 	// The redirect must not depend on the visitor. Googlebot sends no `Accept-Language`,
 	// and Google warns that auto-redirecting between languages blocks crawling, so the
 	// same old URL always maps to the same localized one.
