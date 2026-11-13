@@ -81,3 +81,31 @@ describe('language routing', () => {
 		}
 	});
 });
+
+// The same app answers on the owner's other domains. Each must send visitors and
+// Google to the same page on raqz.pl in one hop, so search sees one site, not five.
+describe('alias domains', () => {
+	const cases: [string, string][] = [
+		['https://raqz.link/en/projects', 'https://raqz.pl/en/projects'],
+		['https://raqz.app/', 'https://raqz.pl/en'],
+		['https://raqz.contact/contact?ref=x', 'https://raqz.pl/en/contact?ref=x'],
+		['https://rakus.dev/services/ai-integrations/', 'https://raqz.pl/en/services/ai-integrations'],
+		['https://raqz.link/sitemap.xml', 'https://raqz.pl/sitemap.xml']
+	];
+
+	for (const [from, to] of cases) {
+		it(`redirects ${from} to ${to}`, async () => {
+			const response = await handle({ event: fakeEvent(from) as never, resolve });
+
+			expect(response.status).toBe(301);
+			expect(response.headers.get('location')).toBe(to);
+		});
+	}
+
+	it('serves raqz.pl and local hosts without a host redirect', async () => {
+		for (const url of ['https://raqz.pl/en', 'http://localhost:3000/en', 'http://127.0.0.1:4173/pl/projects']) {
+			const response = await handle({ event: fakeEvent(url) as never, resolve });
+			expect(response.status, url).toBe(200);
+		}
+	});
+});
