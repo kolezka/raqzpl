@@ -1,4 +1,5 @@
-import { DEFAULT_LANG, LANGS, SITE_URL, type Lang } from './i18n';
+import { DEFAULT_LANG, LANGS, PAGE_PATHS, SITE_URL, t, type Lang } from './i18n';
+import { projectAnchor, projects } from './projects';
 
 export const SITE_NAME = 'raqz.pl';
 export const AUTHOR_NAME = 'Mariusz Rakus';
@@ -54,4 +55,48 @@ export function siteJsonLd(lang: Lang): Record<string, unknown> {
 export function jsonLdScript(data: unknown): string {
 	const json = JSON.stringify(data).replace(/</g, '\\u003c');
 	return `<script type="application/ld+json">${json}</script>`;
+}
+
+/** One entry per page per language, each listing all its language versions. */
+export function sitemapXml(): string {
+	const entries = PAGE_PATHS.flatMap((path) =>
+		LANGS.map((lang) => {
+			const alternates = alternateLinks(path)
+				.map((link) => `<xhtml:link rel="alternate" hreflang="${link.hreflang}" href="${link.href}"/>`)
+				.join('');
+			return `<url><loc>${SITE_URL}/${lang}${path}</loc>${alternates}</url>`;
+		})
+	);
+	return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">${entries.join('')}</urlset>\n`;
+}
+
+/** A plain Markdown summary for AI crawlers and assistants (llmstxt.org). English only. */
+export function llmsTxt(): string {
+	const strings = t(DEFAULT_LANG);
+	const projectLines = projects.map((project) => {
+		const href = project.href ?? `${SITE_URL}/en/projects#${projectAnchor(project.name)}`;
+		return `- [${project.name}](${href}): ${project.tagline.en}`;
+	});
+	return [
+		`# ${SITE_NAME}`,
+		'',
+		`> ${strings.home.description}`,
+		'',
+		'## Pages',
+		'',
+		`- [Home](${SITE_URL}/en): ${strings.home.lead}`,
+		`- [Projects](${SITE_URL}/en/projects): ${strings.projects.description}`,
+		`- [Contact](${SITE_URL}/en/contact): ${strings.contact.description}`,
+		`- Polish version: ${SITE_URL}/pl`,
+		'',
+		'## Projects',
+		'',
+		...projectLines,
+		'',
+		'## Profiles',
+		'',
+		`- [GitHub](${PROFILES.github})`,
+		`- [LinkedIn](${PROFILES.linkedin})`,
+		''
+	].join('\n');
 }

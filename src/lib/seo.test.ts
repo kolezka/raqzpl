@@ -1,6 +1,59 @@
 import { describe, expect, it } from 'vitest';
-import { alternateLinks, jsonLdScript, ogLocale, siteJsonLd } from './seo';
+import { existsSync } from 'node:fs';
+import { alternateLinks, jsonLdScript, llmsTxt, ogLocale, siteJsonLd, sitemapXml } from './seo';
 import { LANGS, PAGE_PATHS, t } from './i18n';
+import { projects } from './projects';
+
+describe('sitemapXml', () => {
+	const xml = sitemapXml();
+	const urls = [...xml.matchAll(/<url>(.*?)<\/url>/g)].map((match) => match[1]);
+
+	it('lists every page in every language, each with all alternates', () => {
+		const locs = urls.map((url) => url.match(/<loc>(.*?)<\/loc>/)?.[1]);
+		expect(locs.sort()).toEqual(
+			PAGE_PATHS.flatMap((path) => LANGS.map((lang) => `https://raqz.pl/${lang}${path}`)).sort()
+		);
+		for (const url of urls) {
+			expect(url.match(/hreflang="(.*?)"/g)).toEqual([
+				'hreflang="en"',
+				'hreflang="pl"',
+				'hreflang="x-default"'
+			]);
+		}
+	});
+
+	// A sitemap entry without a page behind it is a 404 Google keeps retrying.
+	it('lists only paths that have a page route', () => {
+		for (const path of PAGE_PATHS) {
+			expect(existsSync(`src/routes/[lang=lang]${path}/+page.svelte`), path).toBe(true);
+		}
+	});
+
+	it('declares both namespaces it uses', () => {
+		expect(xml).toContain('xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"');
+		expect(xml).toContain('xmlns:xhtml="http://www.w3.org/1999/xhtml"');
+	});
+});
+
+describe('llmsTxt', () => {
+	const text = llmsTxt();
+
+	it('follows the llms.txt layout: title, summary, then link sections', () => {
+		expect(text.startsWith('# raqz.pl\n\n> ')).toBe(true);
+		expect(text).toMatch(/^## Pages$/m);
+		expect(text).toMatch(/^## Projects$/m);
+		expect(text).toContain('[Projects](https://raqz.pl/en/projects)');
+		expect(text).toContain('[Contact](https://raqz.pl/en/contact)');
+	});
+
+	it('lists every project once, linking source or its anchor on the site', () => {
+		for (const project of projects) {
+			const lines = text.split('\n').filter((line) => line.startsWith(`- [${project.name}](`));
+			expect(lines, project.name).toHaveLength(1);
+			expect(lines[0]).toContain(project.href ?? 'https://raqz.pl/en/projects#');
+		}
+	});
+});
 
 describe('alternateLinks', () => {
 	it('lists every language plus x-default with absolute URLs', () => {
