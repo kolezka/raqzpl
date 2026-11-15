@@ -3,11 +3,30 @@
 	import { onNavigate, afterNavigate } from '$app/navigation';
 	import AsciiTransition from '$lib/components/AsciiTransition.svelte';
 	import ConsentBanner from '$lib/components/ConsentBanner.svelte';
-	import { trackDeviceModel } from '$lib/analytics';
+	import {
+		SCROLL_MILESTONES,
+		TIME_MILESTONES,
+		classifyLink,
+		newMilestones,
+		scrollPercent,
+		trackDeviceModel,
+		trackEvent
+	} from '$lib/analytics';
 	import { initConsent } from '$lib/consent.svelte';
 
 	let { children } = $props();
 	let transition: AsciiTransition | undefined = $state();
+
+	// Engagement per page view: reset on every navigation.
+	let scrollReported = new Set<number>();
+	let timeReported = new Set<number>();
+	let visibleSeconds = 0;
+
+	function report(event: string, key: string, values: number[]) {
+		for (const value of values) {
+			trackEvent(window, event, { [key]: String(value), path: location.pathname });
+		}
+	}
 
 	onMount(() => {
 		initConsent();
@@ -20,6 +39,56 @@
 		trackDeviceModel(window, navigator, session).catch((error) =>
 			console.warn('device model not sent to Umami', error)
 		);
+
+		// One listener for every link on every page, including ones added later.
+		const onClick = (event: MouseEvent) => {
+			const link = (event.target as Element | null)?.closest?.('a[href]');
+			const href = link?.getAttribute('href');
+			if (!href) return;
+			const target = classifyLink(href, location.host);
+			if (target) trackEvent(window, 'outbound-link', { ...target, from: location.pathname });
+		};
+
+		// Only a real scroll counts, so a page that fits the screen reports nothing.
+		let frame = 0;
+		const onScroll = () => {
+			if (frame) return;
+			frame = requestAnimationFrame(() => {
+				frame = 0;
+				const depth = scrollPercent(
+					window.scrollY,
+					window.innerHeight,
+					document.documentElement.scrollHeight
+				);
+				const reached = newMilestones(depth, SCROLL_MILESTONES, scrollReported);
+				reached.forEach((value) => scrollReported.add(value));
+				report('scroll-depth', 'depth', reached);
+			});
+		};
+
+		// Counts only seconds with the tab in front, so a forgotten tab adds nothing.
+		const timer = setInterval(() => {
+			if (document.visibilityState !== 'visible') return;
+			visibleSeconds += 1;
+			const reached = newMilestones(visibleSeconds, TIME_MILESTONES, timeReported);
+			reached.forEach((value) => timeReported.add(value));
+			report('time-on-page', 'seconds', reached);
+		}, 1000);
+
+		document.addEventListener('click', onClick, { capture: true });
+		window.addEventListener('scroll', onScroll, { passive: true });
+		return () => {
+			document.removeEventListener('click', onClick, { capture: true });
+			window.removeEventListener('scroll', onScroll);
+			clearInterval(timer);
+			cancelAnimationFrame(frame);
+		};
+	});
+
+	afterNavigate(() => {
+		scrollReported = new Set();
+		timeReported = new Set();
+		visibleSeconds = 0;
 	});
 
 	// Cover the screen with an ASCII scramble before the DOM swaps, then dissolve it

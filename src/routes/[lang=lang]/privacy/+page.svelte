@@ -30,8 +30,10 @@
 			Zawsze działa Umami, uruchomione na moim własnym serwerze. Nie ustawia ciasteczek. Zapisuje
 			odwiedzone podstrony, stronę, z której przychodzisz, przeglądarkę, system, typ urządzenia,
 			rozmiar ekranu i kraj. Na telefonach z Androidem i przeglądarką Chrome, Samsung Internet lub
-			Edge zapisuje też model telefonu. Umami nagrywa przebieg wizyty (ruchy i kliknięcia) do
-			podglądu i map cieplnych, z częściowym maskowaniem treści. Dane nie trafiają do
+			Edge zapisuje też model telefonu i wersję systemu. Zapisuje również, jak daleko przewijasz
+			stronę, ile czasu jest otwarta na wierzchu, w które linki prowadzące poza stronę klikasz i czy
+			formularz kontaktowy się wysłał (bez jego treści). Umami nagrywa przebieg wizyty (ruchy i
+			kliknięcia) do podglądu i map cieplnych, z częściowym maskowaniem treści. Dane nie trafiają do
 			nikogo poza mną.
 		</p>
 
@@ -67,9 +69,11 @@
 		<p>
 			Umami always runs, on my own server. It sets no cookies. It records the pages you open, the site
 			you came from, your browser, system, device type, screen size and country. On Android phones with
-			Chrome, Samsung Internet or Edge it also records the phone model. Umami records the visit (mouse
-			movement and clicks) for replay and heatmaps, with part of the content masked. The
-			data goes to no one but me.
+			Chrome, Samsung Internet or Edge it also records the phone model and system version. It also
+			records how far you scroll, how long the page stays in front, which links leading off the site
+			you click, and whether the contact form was sent (not what it said). Umami records the visit
+			(mouse movement and clicks) for replay and heatmaps, with part of the content masked. The data
+			goes to no one but me.
 		</p>
 
 		<h2 class="section"><span>Google Analytics</span></h2>

@@ -1,11 +1,19 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
 	GA_MEASUREMENT_ID,
+	SCROLL_MILESTONES,
+	TIME_MILESTONES,
 	applyConsent,
+	classifyLink,
+	contactResult,
+	newMilestones,
 	readConsent,
-	readDeviceModel,
+	readDeviceInfo,
+	samsungFoldable,
 	saveConsent,
-	trackDeviceModel
+	scrollPercent,
+	trackDeviceModel,
+	trackEvent
 } from './analytics';
 
 function memoryStorage(initial: Record<string, string> = {}) {
@@ -113,53 +121,150 @@ describe('applyConsent', () => {
 	});
 });
 
-describe('readDeviceModel', () => {
-	const nav = (model: string) => ({
-		userAgentData: { getHighEntropyValues: async () => ({ model }) }
+const hints = (values: { model?: string; platformVersion?: string }) => ({
+	userAgentData: { getHighEntropyValues: async () => values }
+});
+
+describe('samsungFoldable', () => {
+	it('tells Flips and Folds apart by model code', () => {
+		expect(samsungFoldable('SM-F731B')).toBe('flip');
+		expect(samsungFoldable('SM-F741U')).toBe('flip');
+		expect(samsungFoldable('SM-F946B')).toBe('fold');
 	});
 
-	it('returns the model a Chromium phone reports', async () => {
-		expect(await readDeviceModel(nav('SM-F731B'))).toBe('SM-F731B');
+	it('leaves other phones alone', () => {
+		expect(samsungFoldable('SM-S911B')).toBeUndefined();
+		expect(samsungFoldable('SM-A556B')).toBeUndefined();
+		expect(samsungFoldable('Pixel 9')).toBeUndefined();
+	});
+});
+
+describe('readDeviceInfo', () => {
+	it('returns model, Android version and foldable type', async () => {
+		expect(await readDeviceInfo(hints({ model: 'SM-F731B', platformVersion: '16.0.0' }))).toEqual({
+			model: 'SM-F731B',
+			android: '16.0.0',
+			foldable: 'flip'
+		});
+	});
+
+	it('omits fields the browser does not report', async () => {
+		expect(await readDeviceInfo(hints({ model: 'Pixel 9' }))).toEqual({ model: 'Pixel 9' });
 	});
 
 	it('returns null for desktops and browsers without the API', async () => {
-		expect(await readDeviceModel(nav(''))).toBeNull();
-		expect(await readDeviceModel({})).toBeNull();
+		expect(await readDeviceInfo(hints({ model: '', platformVersion: '15.0' }))).toBeNull();
+		expect(await readDeviceInfo({})).toBeNull();
 	});
 });
 
 describe('trackDeviceModel', () => {
-	const flipNav = { userAgentData: { getHighEntropyValues: async () => ({ model: 'SM-F731B' }) } };
+	const flipNav = hints({ model: 'SM-F731B', platformVersion: '16.0.0' });
 	const noWait = async () => {};
+	const tracker = () => ({ track: vi.fn(), identify: vi.fn() });
+	const flip = { model: 'SM-F731B', android: '16.0.0', foldable: 'flip' };
 
-	it('sends the model to Umami once per session', async () => {
-		const track = vi.fn();
+	it('attaches the device to the session and sends one event per session', async () => {
+		const umami = tracker();
 		const session = memoryStorage();
 
-		expect(await trackDeviceModel({ umami: { track } }, flipNav, session, noWait)).toBe('sent');
-		expect(await trackDeviceModel({ umami: { track } }, flipNav, session, noWait)).toBe('already-sent');
-		expect(track).toHaveBeenCalledTimes(1);
-		expect(track).toHaveBeenCalledWith('device-model', { model: 'SM-F731B' });
+		expect(await trackDeviceModel({ umami }, flipNav, session, noWait)).toBe('sent');
+		expect(await trackDeviceModel({ umami }, flipNav, session, noWait)).toBe('already-sent');
+		expect(umami.identify).toHaveBeenCalledOnce();
+		expect(umami.identify).toHaveBeenCalledWith(flip);
+		expect(umami.track).toHaveBeenCalledOnce();
+		expect(umami.track).toHaveBeenCalledWith('device-model', flip);
 	});
 
 	it('waits for Umami to finish loading', async () => {
-		const track = vi.fn();
-		const win: { umami?: { track: typeof track } } = {};
+		const umami = tracker();
+		const win: { umami?: typeof umami } = {};
 		let waits = 0;
 		const wait = async () => {
-			if (++waits === 3) win.umami = { track };
+			if (++waits === 3) win.umami = umami;
 		};
 
 		expect(await trackDeviceModel(win, flipNav, memoryStorage(), wait)).toBe('sent');
-		expect(track).toHaveBeenCalledOnce();
+		expect(umami.identify).toHaveBeenCalledOnce();
 	});
 
 	it('sends nothing without a model or without Umami', async () => {
-		const track = vi.fn();
-		const desktop = { userAgentData: { getHighEntropyValues: async () => ({ model: '' }) } };
+		const umami = tracker();
 
-		expect(await trackDeviceModel({ umami: { track } }, desktop, memoryStorage(), noWait)).toBe('no-model');
+		expect(await trackDeviceModel({ umami }, hints({ model: '' }), memoryStorage(), noWait)).toBe('no-model');
 		expect(await trackDeviceModel({}, flipNav, memoryStorage(), noWait)).toBe('no-umami');
-		expect(track).not.toHaveBeenCalled();
+		expect(umami.track).not.toHaveBeenCalled();
+		expect(umami.identify).not.toHaveBeenCalled();
+	});
+});
+
+describe('trackEvent', () => {
+	it('sends when Umami is loaded and does nothing when it is blocked', () => {
+		const track = vi.fn();
+		trackEvent({ umami: { track, identify: vi.fn() } }, 'contact-submit', { result: 'sent' });
+		expect(track).toHaveBeenCalledWith('contact-submit', { result: 'sent' });
+		expect(() => trackEvent({}, 'contact-submit')).not.toThrow();
+	});
+});
+
+describe('classifyLink', () => {
+	it('reports outbound links by host and path, without the query string', () => {
+		expect(classifyLink('https://github.com/kolezka/raqzpl?tab=readme#top', 'raqz.pl')).toEqual({
+			kind: 'outbound',
+			target: 'github.com/kolezka/raqzpl'
+		});
+		expect(classifyLink('https://www.linkedin.com/', 'raqz.pl')).toEqual({
+			kind: 'outbound',
+			target: 'www.linkedin.com'
+		});
+	});
+
+	it('reports email links without the address', () => {
+		expect(classifyLink('mailto:hello@raqz.pl', 'raqz.pl')).toEqual({ kind: 'email', target: 'email' });
+	});
+
+	it('ignores links inside the site and other schemes', () => {
+		expect(classifyLink('/pl/projects', 'raqz.pl')).toBeNull();
+		expect(classifyLink('https://raqz.pl/en/contact', 'raqz.pl')).toBeNull();
+		expect(classifyLink('#section', 'raqz.pl')).toBeNull();
+		expect(classifyLink('tel:+48123456789', 'raqz.pl')).toBeNull();
+		expect(classifyLink('javascript:void(0)', 'raqz.pl')).toBeNull();
+	});
+});
+
+describe('scrollPercent', () => {
+	it('measures the bottom edge of the viewport against the page', () => {
+		expect(scrollPercent(0, 1000, 4000)).toBe(25);
+		expect(scrollPercent(1000, 1000, 4000)).toBe(50);
+	});
+
+	it('counts the last 2% and pages shorter than the screen as the end', () => {
+		expect(scrollPercent(2930, 1000, 4000)).toBe(100);
+		expect(scrollPercent(0, 1000, 800)).toBe(100);
+	});
+});
+
+describe('newMilestones', () => {
+	it('returns every milestone passed since the last report, once', () => {
+		const reported = new Set<number>();
+		const first = newMilestones(60, SCROLL_MILESTONES, reported);
+		expect(first).toEqual([25, 50]);
+		first.forEach((milestone) => reported.add(milestone));
+
+		expect(newMilestones(60, SCROLL_MILESTONES, reported)).toEqual([]);
+		expect(newMilestones(100, SCROLL_MILESTONES, reported)).toEqual([75, 100]);
+	});
+
+	it('works for time on page in seconds', () => {
+		expect(newMilestones(45, TIME_MILESTONES, new Set([15]))).toEqual([30]);
+	});
+});
+
+describe('contactResult', () => {
+	it('maps form outcomes to a short label', () => {
+		expect(contactResult({ type: 'success', status: 200 })).toBe('sent');
+		expect(contactResult({ type: 'failure', status: 400 })).toBe('invalid');
+		expect(contactResult({ type: 'failure', status: 502 })).toBe('mail-failed');
+		expect(contactResult({ type: 'error', status: 500 })).toBe('error');
 	});
 });
