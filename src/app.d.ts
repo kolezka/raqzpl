@@ -17,6 +17,20 @@ declare global {
 		// interface PageState {}
 		// interface Platform {}
 	}
+
+	// Globals set by the analytics scripts, see src/lib/analytics.ts.
+	interface Window {
+		dataLayer?: unknown[];
+		gtag?: (...args: unknown[]) => void;
+		umami?: { track(event: string, data?: Record<string, string>): unknown };
+	}
+
+	// User-Agent Client Hints. Chromium only, so it stays optional.
+	interface Navigator {
+		userAgentData?: {
+			getHighEntropyValues(hints: string[]): Promise<{ model?: string }>;
+		};
+	}
 }
 
 export {};

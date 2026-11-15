@@ -86,6 +86,24 @@ type Strings = {
 		ctaLink: string;
 		more: string;
 	};
+	consent: {
+		label: string;
+		text: string;
+		accept: string;
+		reject: string;
+		policy: string;
+	};
+	privacy: {
+		title: string;
+		description: string;
+		heading: string;
+		current: (choice: string) => string;
+		accepted: string;
+		rejected: string;
+		unanswered: string;
+		accept: string;
+		reject: string;
+	};
 };
 
 const en: Strings = {
@@ -151,6 +169,24 @@ const en: Strings = {
 		cta: 'Write what the bot or integration should do. I answer from hello@raqz.pl.',
 		ctaLink: 'contact form →',
 		more: 'other services'
+	},
+	consent: {
+		label: 'Cookie choice',
+		text: 'May I use Google Analytics cookies to see how visitors find and use this site? Without them only the cookieless page counter runs.',
+		accept: 'accept',
+		reject: 'reject',
+		policy: 'privacy'
+	},
+	privacy: {
+		title: 'Privacy · Mariusz Rakus',
+		description: 'What this site measures, which cookies it sets with your consent, and how to change your choice.',
+		heading: 'privacy',
+		current: (choice) => `Your current choice: ${choice}.`,
+		accepted: 'Google Analytics accepted',
+		rejected: 'Google Analytics rejected',
+		unanswered: 'not chosen yet',
+		accept: 'accept Google Analytics',
+		reject: 'reject Google Analytics'
 	}
 };
 
@@ -218,6 +254,24 @@ const pl: Strings = {
 		cta: 'Napisz, co bot albo integracja ma robić. Odpowiadam z hello@raqz.pl.',
 		ctaLink: 'formularz kontaktowy →',
 		more: 'pozostałe usługi'
+	},
+	consent: {
+		label: 'Zgoda na ciasteczka',
+		text: 'Czy mogę użyć ciasteczek Google Analytics, żeby widzieć, jak odwiedzający trafiają na stronę i z niej korzystają? Bez nich działa tylko licznik odwiedzin bez ciasteczek.',
+		accept: 'akceptuję',
+		reject: 'odrzucam',
+		policy: 'prywatność'
+	},
+	privacy: {
+		title: 'Prywatność · Mariusz Rakus',
+		description: 'Co mierzy ta strona, jakie ciasteczka ustawia za Twoją zgodą i jak zmienić wybór.',
+		heading: 'prywatność',
+		current: (choice) => `Twój obecny wybór: ${choice}.`,
+		accepted: 'zgoda na Google Analytics',
+		rejected: 'brak zgody na Google Analytics',
+		unanswered: 'jeszcze nie wybrano',
+		accept: 'zgadzam się na Google Analytics',
+		reject: 'nie zgadzam się na Google Analytics'
 	}
 };
 

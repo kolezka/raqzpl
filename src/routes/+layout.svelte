@@ -1,9 +1,26 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { onNavigate, afterNavigate } from '$app/navigation';
 	import AsciiTransition from '$lib/components/AsciiTransition.svelte';
+	import ConsentBanner from '$lib/components/ConsentBanner.svelte';
+	import { trackDeviceModel } from '$lib/analytics';
+	import { initConsent } from '$lib/consent.svelte';
 
 	let { children } = $props();
 	let transition: AsciiTransition | undefined = $state();
+
+	onMount(() => {
+		initConsent();
+		let session: Storage | undefined;
+		try {
+			session = window.sessionStorage;
+		} catch {
+			// Blocked storage only means the model may be sent once per page view.
+		}
+		trackDeviceModel(window, navigator, session).catch((error) =>
+			console.warn('device model not sent to Umami', error)
+		);
+	});
 
 	// Cover the screen with an ASCII scramble before the DOM swaps, then dissolve it
 	// once the new page is mounted. `onNavigate` holds the swap until cover() resolves,
@@ -22,6 +39,7 @@
 
 {@render children()}
 <AsciiTransition bind:this={transition} />
+<ConsentBanner />
 
 <style>
 	/* Paper design system, see .design/design-system.md. Warm ink by default, paper in light mode. */
