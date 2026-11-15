@@ -172,7 +172,7 @@ const en: Strings = {
 	},
 	consent: {
 		label: 'Cookie choice',
-		text: 'May I use Google Analytics cookies to see how visitors find and use this site? Without them only the cookieless page counter runs.',
+		text: 'May I use Google Analytics cookies to see how visitors find and use this site? Without them Google gets only basic signals with no cookies and no lasting identifier.',
 		accept: 'accept',
 		reject: 'reject',
 		policy: 'privacy'
@@ -257,7 +257,7 @@ const pl: Strings = {
 	},
 	consent: {
 		label: 'Zgoda na ciasteczka',
-		text: 'Czy mogę użyć ciasteczek Google Analytics, żeby widzieć, jak odwiedzający trafiają na stronę i z niej korzystają? Bez nich działa tylko licznik odwiedzin bez ciasteczek.',
+		text: 'Czy mogę użyć ciasteczek Google Analytics, żeby widzieć, jak odwiedzający trafiają na stronę i z niej korzystają? Bez nich Google dostaje tylko podstawowe sygnały, bez ciasteczek i bez trwałego identyfikatora.',
 		accept: 'akceptuję',
 		reject: 'odrzucam',
 		policy: 'prywatność'

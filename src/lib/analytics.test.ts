@@ -77,15 +77,32 @@ describe('consent storage', () => {
 });
 
 describe('applyConsent', () => {
-	it('never loads the Google script without consent', () => {
+	it('loads the tag before an answer, with every kind of storage denied first', () => {
+		const win: { dataLayer?: unknown[] } = {};
+		const { doc, appended } = fakeDocument();
+		applyConsent(win, doc, null);
+
+		expect(appended).toHaveLength(1);
+		const pushed = commands(win.dataLayer);
+		const denied = { analytics_storage: 'denied', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied' };
+		expect(pushed[0]).toEqual(['consent', 'default', denied]);
+		// The default must reach gtag.js before `config`, or the first hit sets cookies.
+		const configAt = pushed.findIndex((command) => command[0] === 'config');
+		expect(configAt).toBeGreaterThan(0);
+		expect(pushed.some((command) => command[1] === 'update')).toBe(false);
+		expect(pushed).toContainEqual(['set', 'ads_data_redaction', true]);
+	});
+
+	it('keeps storage denied and the tag loaded after a refusal', () => {
 		const win: { dataLayer?: unknown[] } = {};
 		const { doc, appended } = fakeDocument();
 		applyConsent(win, doc, 'denied');
 
-		expect(appended).toHaveLength(0);
-		expect(commands(win.dataLayer)).toEqual([
-			['consent', 'default', expect.objectContaining({ analytics_storage: 'denied' })],
-			['consent', 'update', expect.objectContaining({ analytics_storage: 'denied' })]
+		expect(appended).toHaveLength(1);
+		expect(commands(win.dataLayer)).toContainEqual([
+			'consent',
+			'update',
+			expect.objectContaining({ analytics_storage: 'denied' })
 		]);
 	});
 

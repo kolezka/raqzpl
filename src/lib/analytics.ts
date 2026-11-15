@@ -1,6 +1,7 @@
 // Google Analytics 4 behind a consent banner, plus the phone model for Umami.
-// GA4 runs in Consent Mode v2 "basic" mode: the Google script is not even loaded
-// until the visitor accepts, so nothing reaches Google before that.
+// GA4 runs in Consent Mode v2 "advanced" mode (the owner's choice): the Google
+// script loads on every page, but with storage denied until the visitor accepts.
+// Before consent it sets no cookies and sends only cookieless pings.
 
 export const GA_MEASUREMENT_ID = 'G-CXYH9FJED4';
 
@@ -58,11 +59,13 @@ export function consentParams(consent: Consent): Record<string, Consent> {
 }
 
 /**
- * Applies a consent choice. The first call defines the gtag queue with everything
- * denied. "granted" loads the Google script once; "denied" after an earlier
- * "granted" turns storage off again and removes the GA cookies.
+ * Starts GA4 once per page load and applies the visitor's choice. The consent
+ * default (everything denied) is queued before `config`, so Google never stores
+ * anything before an answer. `null` means "not answered yet": the tag loads and
+ * stays in the denied state. "denied" after an earlier "granted" turns storage off
+ * again and removes the GA cookies.
  */
-export function applyConsent(win: GtagWindow, doc: ScriptDocument, consent: Consent): void {
+export function applyConsent(win: GtagWindow, doc: ScriptDocument, consent: Consent | null): void {
 	win.dataLayer = win.dataLayer ?? [];
 	if (!win.gtag) {
 		const queue = win.dataLayer;
@@ -73,10 +76,12 @@ export function applyConsent(win: GtagWindow, doc: ScriptDocument, consent: Cons
 			queue.push(arguments);
 		};
 		win.gtag('consent', 'default', consentParams('denied'));
+		// Strips ad click identifiers from the cookieless pings while ads are denied.
+		win.gtag('set', 'ads_data_redaction', true);
 	}
-	win.gtag('consent', 'update', consentParams(consent));
+	if (consent) win.gtag('consent', 'update', consentParams(consent));
 
-	if (consent === 'granted' && !doc.getElementById(GA_SCRIPT_ID)) {
+	if (!doc.getElementById(GA_SCRIPT_ID)) {
 		win.gtag('js', new Date());
 		win.gtag('config', GA_MEASUREMENT_ID);
 		const script = doc.createElement('script');

@@ -39,11 +39,13 @@
 
 		<h2 class="section"><span>Google Analytics</span></h2>
 		<p>
-			Tylko jeśli się zgodzisz. Wtedy Google Analytics 4 ustawia ciasteczka <span class="mono">_ga</span>
-			i <span class="mono">_ga_*</span> i zbiera dane o wizycie, w tym model urządzenia i przybliżoną
-			lokalizację. Te same dane pozwalają mierzyć skuteczność reklam Google Ads. Dane przetwarza Google
-			Ireland Ltd i mogą one trafić na serwery Google w USA. Przechowuję je do 14 miesięcy. Bez zgody
-			skrypt Google w ogóle się nie wczytuje.
+			Skrypt Google Analytics 4 wczytuje się na każdej stronie. Bez Twojej zgody nie ustawia ciasteczek
+			i wysyła do Google tylko podstawowe sygnały bez trwałego identyfikatora (np. że strona została otwarta);
+			Google widzi przy tym Twój adres IP. Jeśli się zgodzisz, ustawia ciasteczka
+			<span class="mono">_ga</span> i <span class="mono">_ga_*</span> i zbiera dane o wizycie, w tym
+			model urządzenia i przybliżoną lokalizację. Te same dane pozwalają mierzyć skuteczność reklam
+			Google Ads. Dane przetwarza Google Ireland Ltd i mogą one trafić na serwery Google w USA.
+			Przechowuję je do 14 miesięcy.
 		</p>
 
 		<h2 class="section"><span>formularz kontaktowy</span></h2>
@@ -78,11 +80,12 @@
 
 		<h2 class="section"><span>Google Analytics</span></h2>
 		<p>
-			Only if you agree. Google Analytics 4 then sets the <span class="mono">_ga</span> and
+			The Google Analytics 4 script loads on every page. Without your consent it sets no cookies and
+			sends Google only basic signals with no lasting identifier (for example that a page was opened); Google
+			sees your IP address while doing so. If you agree, it sets the <span class="mono">_ga</span> and
 			<span class="mono">_ga_*</span> cookies and collects data about the visit, including the device
 			model and approximate location. The same data measures Google Ads results. Google Ireland Ltd
-			processes it and it may reach Google servers in the USA. I keep it for up to 14 months. Without
-			consent the Google script does not load at all.
+			processes it and it may reach Google servers in the USA. I keep it for up to 14 months.
 		</p>
 
 		<h2 class="section"><span>contact form</span></h2>
