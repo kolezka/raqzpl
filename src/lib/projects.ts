@@ -10,8 +10,28 @@ export type Project = {
 	live?: string;
 };
 
-// Curated projects. Only public repositories get a source link.
+// Curated projects, ordered by impact: outside reach first (GitHub stars and forks,
+// search interest), then real use and technical depth, early work last. The first
+// FEATURED_COUNT appear on the home page. Only public repositories get a source link.
 export const projects: Project[] = [
+	{
+		name: 'NL5H00X',
+		tagline: {
+			en: 'A firmware reverse-engineering toolkit for the NL5H00X Android projector, covering vendor launcher behavior, installation restrictions and recovery diagnostics. Launcher changes require a verified backup and hash-checked cache preservation; a fake-device test harness exercises host-side logic without risking the physical unit.',
+			pl: 'Zestaw narzędzi do inżynierii wstecznej firmware projektora NL5H00X z Androidem: zachowanie launchera producenta, ograniczenia instalacji i diagnostyka odzyskiwania. Zmiana launchera wymaga zweryfikowanej kopii danych i zachowania cache z kontrolą sum. Testy na symulowanym urządzeniu sprawdzają logikę narzędzi bez ryzykowania sprzętu.'
+		},
+		stack: ['shell', 'python', 'android'],
+		href: 'https://github.com/kolezka/NL5H00X'
+	},
+	{
+		name: 'tg-viewer',
+		tagline: {
+			en: 'An offline Telegram data-analysis pipeline for macOS, combining SQLCipher decryption with a parser for the binary Postbox store. Extracted records are normalized to JSON and served through FastAPI and a browser interface, including recoverable deleted-message and secret-chat data present in the local store.',
+			pl: 'Pipeline analizy danych Telegrama offline dla macOS, łączący odszyfrowanie SQLCipher z parserem binarnego formatu Postbox. Wyodrębnione rekordy są normalizowane do JSON i udostępniane przez FastAPI oraz interfejs przeglądarkowy, także dla zachowanych lokalnie danych usuniętych wiadomości i tajnych czatów.'
+		},
+		stack: ['python', 'sqlcipher', 'mtproto'],
+		href: 'https://github.com/kolezka/tg-viewer'
+	},
 	{
 		name: 'Docify',
 		tagline: {
@@ -37,40 +57,13 @@ export const projects: Project[] = [
 		stack: ['shell', 'tmux', 'claude code']
 	},
 	{
-		name: 'RentHunter',
+		name: 'self-improvement-loop',
 		tagline: {
-			en: 'A self-hosted rental intelligence pipeline with source adapters, bounded-concurrency enrichment and PostgreSQL change snapshots. Optional embedding-based similarity search and LLM scoring rank listings against personal criteria; a virtualized Svelte interface, resumable SSE logs and notifications expose the full collection-to-decision workflow.',
-			pl: 'Samodzielnie hostowany system analizy ofert najmu: adaptery portali, wzbogacanie danych z ograniczoną współbieżnością i historia zmian w PostgreSQL. Opcjonalne wyszukiwanie przez podobieństwo embeddingów oraz ocena LLM dopasowują oferty do kryteriów użytkownika. Wirtualizowany interfejs Svelte, wznawialne logi SSE i powiadomienia obejmują cały proces od zebrania oferty do decyzji.'
+			en: 'A human-reviewed feedback pipeline for coding agents: lightweight hooks capture events, background workers analyze transcripts and recurring lessons become proposed skills, rules, hooks or agents. Changes are staged on Git branches, acceptance is tied to the reviewed diff, and usage feedback supports later refinement or retirement.',
+			pl: 'Proces doskonalenia agentów z kontrolą człowieka: lekkie hooki zapisują zdarzenia, workery w tle analizują transkrypty, a powtarzające się wnioski stają się propozycjami skilli, reguł, hooków lub agentów. Zmiany trafiają na gałęzie Git, akceptacja dotyczy konkretnego diffu, a dane o użyciu pomagają je później poprawiać lub wycofywać.'
 		},
-		stack: ['bun', 'svelte', 'postgres', 'drizzle', 'deepseek'],
-		href: 'https://github.com/kolezka/renthunter'
-	},
-	{
-		name: 'claude-stealth-search-plugin',
-		tagline: {
-			en: 'A self-hosted web-research integration for Claude Code and DeepSeek Harness, routing discovery through SearXNG and rendered-page extraction through Crawl4AI. Bounded same-section crawls, explicit service failures and hooks blocking built-in web tools keep the research path predictable without silent provider fallback.',
-			pl: 'Integracja wyszukiwania internetowego dla Claude Code i DeepSeek Harness oparta na własnych instancjach SearXNG i Crawl4AI. Łączy wyszukiwanie źródeł z ekstrakcją renderowanych stron, ogranicza crawling do wybranej sekcji i jawnie zgłasza awarie. Hooki blokują wbudowane narzędzia webowe, bez cichego przełączania na innego dostawcę.'
-		},
-		stack: ['typescript', 'claude code', 'searxng', 'crawl4ai'],
-		href: 'https://github.com/kolezka/claude-stealth-search-plugin'
-	},
-	{
-		name: 'design-studio',
-		tagline: {
-			en: 'A code-informed UI design workflow that reconstructs the existing screen before exploring structurally distinct HTML variants. A local comparison canvas supports responsive viewports, light/dark rendering and versioned iterations, with screenshot review before implementation and no product-code changes during exploration.',
-			pl: 'Proces projektowania UI oparty na istniejącym kodzie: najpierw odtworzenie obecnego ekranu, potem warianty HTML różniące się strukturą. Lokalne płótno porównawcze obsługuje widoki responsywne, tryby jasny i ciemny oraz wersjonowane iteracje. Przegląd renderów poprzedza implementację, a etap eksploracji nie zmienia kodu produktu.'
-		},
-		stack: ['typescript', 'html', 'claude code'],
-		href: 'https://github.com/kolezka/design-studio'
-	},
-	{
-		name: 'claude-plugins-dsh',
-		tagline: {
-			en: 'A compatibility runtime mapping Claude Code plugin skills, commands, agents and lifecycle hooks onto DeepSeek Harness. It translates hook events and blocking decisions, isolates hook processes and supplies inspection/scaffolding tools so plugin authors can share one source tree across both harnesses.',
-			pl: 'Runtime zgodności mapujący skille, komendy, agentów i hooki wtyczek Claude Code na DeepSeek Harness. Tłumaczy zdarzenia i decyzje blokujące, izoluje procesy hooków oraz dostarcza narzędzia inspekcji i generowania adapterów. Pozwala utrzymywać wspólne źródła wtyczki dla obu środowisk.'
-		},
-		stack: ['typescript', 'javascript', 'dsh'],
-		href: 'https://github.com/kolezka/claude-plugins-dsh'
+		stack: ['typescript', 'claude code', 'sveltekit'],
+		href: 'https://github.com/kolezka/self-improvement-loop'
 	},
 	{
 		name: 'CALM',
@@ -91,22 +84,23 @@ export const projects: Project[] = [
 		href: 'https://github.com/kolezka/claude-performance-analyzer'
 	},
 	{
-		name: 'worklog-persist',
+		name: 'RentHunter',
 		tagline: {
-			en: 'A durable work-state protocol for coding agents backed by Outline MCP. Stable project/task keys make checkpoints idempotent; lifecycle hooks restore context across sessions, while redaction and explicit write confirmation keep decisions, verification evidence and handoffs separate from unverified claims.',
-			pl: 'Protokół trwałego stanu pracy agentów oparty na Outline MCP. Stabilne klucze projektu i zadania zapewniają idempotentne punkty kontrolne, a hooki cyklu życia odtwarzają kontekst między sesjami. Redakcja sekretów i potwierdzanie zapisu porządkują decyzje, wyniki weryfikacji oraz przekazanie pracy bez traktowania deklaracji jako dowodów.'
+			en: 'A self-hosted rental intelligence pipeline with source adapters, bounded-concurrency enrichment and PostgreSQL change snapshots. Optional embedding-based similarity search and LLM scoring rank listings against personal criteria; a virtualized Svelte interface, resumable SSE logs and notifications expose the full collection-to-decision workflow.',
+			pl: 'Samodzielnie hostowany system analizy ofert najmu: adaptery portali, wzbogacanie danych z ograniczoną współbieżnością i historia zmian w PostgreSQL. Opcjonalne wyszukiwanie przez podobieństwo embeddingów oraz ocena LLM dopasowują oferty do kryteriów użytkownika. Wirtualizowany interfejs Svelte, wznawialne logi SSE i powiadomienia obejmują cały proces od zebrania oferty do decyzji.'
 		},
-		stack: ['typescript', 'shell', 'claude code', 'outline'],
-		href: 'https://github.com/kolezka/worklog-persist'
+		stack: ['bun', 'svelte', 'postgres', 'drizzle', 'deepseek'],
+		href: 'https://github.com/kolezka/renthunter'
 	},
 	{
-		name: 'tg-viewer',
+		name: 'kolezka-cards',
 		tagline: {
-			en: 'An offline Telegram data-analysis pipeline for macOS, combining SQLCipher decryption with a parser for the binary Postbox store. Extracted records are normalized to JSON and served through FastAPI and a browser interface, including recoverable deleted-message and secret-chat data present in the local store.',
-			pl: 'Pipeline analizy danych Telegrama offline dla macOS, łączący odszyfrowanie SQLCipher z parserem binarnego formatu Postbox. Wyodrębnione rekordy są normalizowane do JSON i udostępniane przez FastAPI oraz interfejs przeglądarkowy, także dla zachowanych lokalnie danych usuniętych wiadomości i tajnych czatów.'
+			en: 'A self-hosted SVG rendering and analytics service for GitHub READMEs, with GitHub OAuth, configurable card renderers and PostgreSQL aggregation. Daily salted fingerprints and per-card deduplication support cookie-free visit metrics without persisting raw IP addresses or creating cross-day visitor identifiers.',
+			pl: 'Samodzielnie hostowana usługa renderowania SVG i analityki dla README GitHuba, z OAuth, konfigurowalnymi rendererami kart i agregacją w PostgreSQL. Dzienne solone identyfikatory oraz deduplikacja na poziomie karty pozwalają liczyć wizyty bez cookies, zapisywania surowych adresów IP i identyfikatorów śledzących między dniami.'
 		},
-		stack: ['python', 'sqlcipher', 'mtproto'],
-		href: 'https://github.com/kolezka/tg-viewer'
+		stack: ['bun', 'hono', 'sveltekit'],
+		href: 'https://github.com/kolezka/kolezka-cards',
+		live: 'https://ghcards.raqz.link'
 	},
 	{
 		name: 'tg-spy',
@@ -115,6 +109,41 @@ export const projects: Project[] = [
 			pl: 'Rozproszony system zbierania danych i analizy relacji Telegrama z kolejką odkrywania w PostgreSQL oraz workerami pg-boss. Rekurencyjne wykrywanie źródeł, obserwacja na żywo i dzierżawy przypisane do kont koordynują pobieranie danych. Zdalne workery korzystają z bramy HTTPS zamiast bezpośredniego dostępu do bazy, z opcjonalnym wyszukiwaniem AI na pgvector.'
 		},
 		stack: ['bun', 'mtcute', 'postgres', 'sveltekit']
+	},
+	{
+		name: 'kb',
+		tagline: {
+			en: 'A personal knowledge platform connecting a Markdown vault with hybrid retrieval over Weaviate and PostgreSQL. Code and concept graphs complement document search, while CLI and MCP interfaces expose the same knowledge layer to interactive workflows and coding agents.',
+			pl: 'Osobista platforma wiedzy łącząca repozytorium Markdown z wyszukiwaniem hybrydowym na Weaviate i PostgreSQL. Grafy kodu i pojęć uzupełniają wyszukiwanie dokumentów, a interfejsy CLI i MCP udostępniają tę samą warstwę wiedzy użytkownikowi oraz agentom programistycznym.'
+		},
+		stack: ['typescript', 'weaviate', 'postgres', 'mcp']
+	},
+	{
+		name: 'claude-stealth-search-plugin',
+		tagline: {
+			en: 'A self-hosted web-research integration for Claude Code and DeepSeek Harness, routing discovery through SearXNG and rendered-page extraction through Crawl4AI. Bounded same-section crawls, explicit service failures and hooks blocking built-in web tools keep the research path predictable without silent provider fallback.',
+			pl: 'Integracja wyszukiwania internetowego dla Claude Code i DeepSeek Harness oparta na własnych instancjach SearXNG i Crawl4AI. Łączy wyszukiwanie źródeł z ekstrakcją renderowanych stron, ogranicza crawling do wybranej sekcji i jawnie zgłasza awarie. Hooki blokują wbudowane narzędzia webowe, bez cichego przełączania na innego dostawcę.'
+		},
+		stack: ['typescript', 'claude code', 'searxng', 'crawl4ai'],
+		href: 'https://github.com/kolezka/claude-stealth-search-plugin'
+	},
+	{
+		name: 'design-studio',
+		tagline: {
+			en: 'A code-informed UI design workflow that reconstructs the existing screen before exploring structurally distinct HTML variants. A local comparison canvas supports responsive viewports, light/dark rendering and versioned iterations, with screenshot review before implementation and no product-code changes during exploration.',
+			pl: 'Proces projektowania UI oparty na istniejącym kodzie: najpierw odtworzenie obecnego ekranu, potem warianty HTML różniące się strukturą. Lokalne płótno porównawcze obsługuje widoki responsywne, tryby jasny i ciemny oraz wersjonowane iteracje. Przegląd renderów poprzedza implementację, a etap eksploracji nie zmienia kodu produktu.'
+		},
+		stack: ['typescript', 'html', 'claude code'],
+		href: 'https://github.com/kolezka/design-studio'
+	},
+	{
+		name: 'worklog-persist',
+		tagline: {
+			en: 'A durable work-state protocol for coding agents backed by Outline MCP. Stable project/task keys make checkpoints idempotent; lifecycle hooks restore context across sessions, while redaction and explicit write confirmation keep decisions, verification evidence and handoffs separate from unverified claims.',
+			pl: 'Protokół trwałego stanu pracy agentów oparty na Outline MCP. Stabilne klucze projektu i zadania zapewniają idempotentne punkty kontrolne, a hooki cyklu życia odtwarzają kontekst między sesjami. Redakcja sekretów i potwierdzanie zapisu porządkują decyzje, wyniki weryfikacji oraz przekazanie pracy bez traktowania deklaracji jako dowodów.'
+		},
+		stack: ['typescript', 'shell', 'claude code', 'outline'],
+		href: 'https://github.com/kolezka/worklog-persist'
 	},
 	{
 		name: 'subagent-router',
@@ -126,32 +155,6 @@ export const projects: Project[] = [
 		href: 'https://github.com/kolezka/subagent-router'
 	},
 	{
-		name: 'self-improvement-loop',
-		tagline: {
-			en: 'A human-reviewed feedback pipeline for coding agents: lightweight hooks capture events, background workers analyze transcripts and recurring lessons become proposed skills, rules, hooks or agents. Changes are staged on Git branches, acceptance is tied to the reviewed diff, and usage feedback supports later refinement or retirement.',
-			pl: 'Proces doskonalenia agentów z kontrolą człowieka: lekkie hooki zapisują zdarzenia, workery w tle analizują transkrypty, a powtarzające się wnioski stają się propozycjami skilli, reguł, hooków lub agentów. Zmiany trafiają na gałęzie Git, akceptacja dotyczy konkretnego diffu, a dane o użyciu pomagają je później poprawiać lub wycofywać.'
-		},
-		stack: ['typescript', 'claude code', 'sveltekit'],
-		href: 'https://github.com/kolezka/self-improvement-loop'
-	},
-	{
-		name: 'kb',
-		tagline: {
-			en: 'A personal knowledge platform connecting a Markdown vault with hybrid retrieval over Weaviate and PostgreSQL. Code and concept graphs complement document search, while CLI and MCP interfaces expose the same knowledge layer to interactive workflows and coding agents.',
-			pl: 'Osobista platforma wiedzy łącząca repozytorium Markdown z wyszukiwaniem hybrydowym na Weaviate i PostgreSQL. Grafy kodu i pojęć uzupełniają wyszukiwanie dokumentów, a interfejsy CLI i MCP udostępniają tę samą warstwę wiedzy użytkownikowi oraz agentom programistycznym.'
-		},
-		stack: ['typescript', 'weaviate', 'postgres', 'mcp']
-	},
-	{
-		name: 'NL5H00X',
-		tagline: {
-			en: 'A firmware reverse-engineering toolkit for the NL5H00X Android projector, covering vendor launcher behavior, installation restrictions and recovery diagnostics. Launcher changes require a verified backup and hash-checked cache preservation; a fake-device test harness exercises host-side logic without risking the physical unit.',
-			pl: 'Zestaw narzędzi do inżynierii wstecznej firmware projektora NL5H00X z Androidem: zachowanie launchera producenta, ograniczenia instalacji i diagnostyka odzyskiwania. Zmiana launchera wymaga zweryfikowanej kopii danych i zachowania cache z kontrolą sum. Testy na symulowanym urządzeniu sprawdzają logikę narzędzi bez ryzykowania sprzętu.'
-		},
-		stack: ['shell', 'python', 'android'],
-		href: 'https://github.com/kolezka/NL5H00X'
-	},
-	{
 		name: 'block-docs',
 		tagline: {
 			en: 'A source-pinned documentation workflow that makes contracts, invariants, ownership and known gaps explicit. Separate writer and verifier agents check claims against code revisions, while a structural linter enforces document shape and evidence fields, distinguishing documented intent from actual enforcement.',
@@ -159,6 +162,15 @@ export const projects: Project[] = [
 		},
 		stack: ['python', 'claude code'],
 		href: 'https://github.com/kolezka/block-docs'
+	},
+	{
+		name: 'claude-plugins-dsh',
+		tagline: {
+			en: 'A compatibility runtime mapping Claude Code plugin skills, commands, agents and lifecycle hooks onto DeepSeek Harness. It translates hook events and blocking decisions, isolates hook processes and supplies inspection/scaffolding tools so plugin authors can share one source tree across both harnesses.',
+			pl: 'Runtime zgodności mapujący skille, komendy, agentów i hooki wtyczek Claude Code na DeepSeek Harness. Tłumaczy zdarzenia i decyzje blokujące, izoluje procesy hooków oraz dostarcza narzędzia inspekcji i generowania adapterów. Pozwala utrzymywać wspólne źródła wtyczki dla obu środowisk.'
+		},
+		stack: ['typescript', 'javascript', 'dsh'],
+		href: 'https://github.com/kolezka/claude-plugins-dsh'
 	},
 	{
 		name: 'bruce-pcap-forensics',
@@ -170,14 +182,12 @@ export const projects: Project[] = [
 		href: 'https://github.com/kolezka/bruce-pcap-forensics'
 	},
 	{
-		name: 'kolezka-cards',
+		name: 'pentester',
 		tagline: {
-			en: 'A self-hosted SVG rendering and analytics service for GitHub READMEs, with GitHub OAuth, configurable card renderers and PostgreSQL aggregation. Daily salted fingerprints and per-card deduplication support cookie-free visit metrics without persisting raw IP addresses or creating cross-day visitor identifiers.',
-			pl: 'Samodzielnie hostowana usługa renderowania SVG i analityki dla README GitHuba, z OAuth, konfigurowalnymi rendererami kart i agregacją w PostgreSQL. Dzienne solone identyfikatory oraz deduplikacja na poziomie karty pozwalają liczyć wizyty bez cookies, zapisywania surowych adresów IP i identyfikatorów śledzących między dniami.'
+			en: 'An authorized, read-first security assessment system: specialist agents, a policy gateway, evidence provenance, durable PostgreSQL jobs and an MCP interface with a read-only operator workbench. Models only propose claims and checks; access, behavioral checks and publication need operator approval. Early version, tested on synthetic fixtures with a scripted model.',
+			pl: 'System do autoryzowanych ocen bezpieczeństwa, działający najpierw w trybie odczytu: wyspecjalizowani agenci, bramka polityk, śledzenie pochodzenia dowodów, trwałe zadania w PostgreSQL i interfejs MCP z panelem operatora tylko do odczytu. Model tylko proponuje tezy i testy; dostęp, testy zachowania i publikację zatwierdza operator. Wczesna wersja, testowana na danych syntetycznych i skryptowym modelu.'
 		},
-		stack: ['bun', 'hono', 'sveltekit'],
-		href: 'https://github.com/kolezka/kolezka-cards',
-		live: 'https://ghcards.raqz.link'
+		stack: ['typescript', 'bun', 'postgres', 'mcp']
 	}
 ];
 
