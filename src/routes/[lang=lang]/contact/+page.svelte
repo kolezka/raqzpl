@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import PageMeta from '$lib/components/PageMeta.svelte';
+	import { contactResult, trackEvent } from '$lib/analytics';
 	import { t } from '$lib/i18n';
 	import { PROFILES } from '$lib/seo';
 	import type { ActionData } from './$types';
@@ -53,9 +54,11 @@
 		method="POST"
 		use:enhance={() => {
 			sending = true;
-			return async ({ update }) => {
+			return async ({ result, update }) => {
 				await update();
 				sending = false;
+				// Only the outcome; nothing the visitor typed leaves the page.
+				trackEvent(window, 'contact-submit', { result: contactResult(result) });
 			};
 		}}
 	>

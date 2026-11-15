@@ -105,36 +105,81 @@ function clearGaCookies(doc: ScriptDocument): void {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Umami: extra events on top of page views. Umami sets no cookies, so these run
+// without consent. None of them carries what a visitor typed.
+
+type HighEntropyValues = { model?: string; platformVersion?: string };
+
 type HighEntropyNavigator = {
 	userAgentData?: {
-		getHighEntropyValues(hints: string[]): Promise<{ model?: string }>;
+		getHighEntropyValues(hints: string[]): Promise<HighEntropyValues>;
 	};
 };
 
+export type DeviceInfo = {
+	model: string;
+	/** Android version, e.g. `16.0.0`. Missing when the browser does not say. */
+	android?: string;
+	/** Samsung foldables, told apart by model code. */
+	foldable?: 'flip' | 'fold';
+};
+
 /**
- * The phone model, e.g. `SM-F731B` for a Galaxy Z Flip5. Only Chromium browsers
- * report it (Chrome, Samsung Internet, Edge on Android). Desktops answer with an
- * empty string and Safari has no API at all; both give null.
+ * Samsung model codes: SM-F7xx are Galaxy Z Flips (SM-F731B is the Flip5), SM-F9xx
+ * are Galaxy Z Folds. Other brands have no stable pattern, so they get nothing.
  */
-export async function readDeviceModel(nav: HighEntropyNavigator): Promise<string | null> {
-	if (!nav.userAgentData) return null;
-	const values = await nav.userAgentData.getHighEntropyValues(['model']);
-	const model = values.model?.trim();
-	return model ? model : null;
+export function samsungFoldable(model: string): 'flip' | 'fold' | undefined {
+	if (/^SM-F7\d\d/i.test(model)) return 'flip';
+	if (/^SM-F9\d\d/i.test(model)) return 'fold';
+	return undefined;
 }
 
-type UmamiWindow = {
-	umami?: { track(event: string, data?: Record<string, string>): unknown };
+/**
+ * The phone model and Android version. Only Chromium browsers report them (Chrome,
+ * Samsung Internet, Edge on Android). Desktops answer with an empty model and Safari
+ * has no API at all; both give null.
+ */
+export async function readDeviceInfo(nav: HighEntropyNavigator): Promise<DeviceInfo | null> {
+	if (!nav.userAgentData) return null;
+	const values = await nav.userAgentData.getHighEntropyValues(['model', 'platformVersion']);
+	const model = values.model?.trim();
+	if (!model) return null;
+	const info: DeviceInfo = { model };
+	const android = values.platformVersion?.trim();
+	if (android) info.android = android;
+	const foldable = samsungFoldable(model);
+	if (foldable) info.foldable = foldable;
+	return info;
+}
+
+type UmamiTracker = {
+	track(event: string, data?: Record<string, string>): unknown;
+	identify(data: Record<string, string>): unknown;
 };
+
+type UmamiWindow = { umami?: UmamiTracker };
 
 type Wait = (ms: number) => Promise<void>;
 
 const sleep: Wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** Umami loads with `defer`; give it up to five seconds. An ad blocker means never. */
+async function waitForUmami(win: UmamiWindow, wait: Wait): Promise<UmamiTracker | undefined> {
+	for (let attempt = 0; attempt < 20 && !win.umami; attempt++) {
+		await wait(250);
+	}
+	return win.umami;
+}
+
+/** Sends one event if Umami is there. A blocked tracker is normal, not an error. */
+export function trackEvent(win: UmamiWindow, event: string, data?: Record<string, string>): void {
+	win.umami?.track(event, data);
+}
+
 /**
- * Sends the phone model to Umami as a `device-model` event, once per browser session.
- * Umami loads with `defer`, so this waits a few seconds for it. When an ad blocker
- * keeps Umami away there is nothing to report to, and it gives up.
+ * Attaches the device to the Umami session (so every report can be filtered by
+ * model) and sends a `device-model` event, once per browser session.
  */
 export async function trackDeviceModel(
 	win: UmamiWindow,
@@ -144,15 +189,14 @@ export async function trackDeviceModel(
 ): Promise<'sent' | 'already-sent' | 'no-model' | 'no-umami'> {
 	if (readFlag(session)) return 'already-sent';
 
-	const model = await readDeviceModel(nav);
-	if (!model) return 'no-model';
+	const info = await readDeviceInfo(nav);
+	if (!info) return 'no-model';
 
-	for (let attempt = 0; attempt < 20 && !win.umami; attempt++) {
-		await wait(250);
-	}
-	if (!win.umami) return 'no-umami';
+	const umami = await waitForUmami(win, wait);
+	if (!umami) return 'no-umami';
 
-	win.umami.track('device-model', { model });
+	umami.identify({ ...info });
+	umami.track('device-model', { ...info });
 	try {
 		session?.setItem(MODEL_SENT_KEY, '1');
 	} catch {
@@ -167,4 +211,56 @@ function readFlag(session: KeyValueStorage | undefined): boolean {
 	} catch {
 		return false;
 	}
+}
+
+export type LinkTarget = { kind: 'email' | 'outbound'; target: string };
+
+/**
+ * What a clicked link leads to, or null for links inside the site. Email links
+ * report only that they are email links; outbound links report host and path,
+ * without the query string, which can carry personal data.
+ */
+export function classifyLink(href: string, currentHost: string): LinkTarget | null {
+	let url: URL;
+	try {
+		url = new URL(href, `https://${currentHost}/`);
+	} catch {
+		return null;
+	}
+	if (url.protocol === 'mailto:') return { kind: 'email', target: 'email' };
+	if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+	if (url.host === currentHost) return null;
+	const path = url.pathname === '/' ? '' : url.pathname;
+	return { kind: 'outbound', target: `${url.host}${path}` };
+}
+
+export const SCROLL_MILESTONES = [25, 50, 75, 100] as const;
+export const TIME_MILESTONES = [15, 30, 60, 120, 300] as const;
+
+/**
+ * How far down the page the visitor got, in percent. The last 2% count as the
+ * end, because a footer rarely scrolls fully into view.
+ */
+export function scrollPercent(scrollY: number, viewportHeight: number, pageHeight: number): number {
+	if (pageHeight <= viewportHeight) return 100;
+	const percent = ((scrollY + viewportHeight) / pageHeight) * 100;
+	return percent >= 98 ? 100 : Math.max(0, Math.floor(percent));
+}
+
+/** Milestones reached now that were not reported yet, in order. */
+export function newMilestones(
+	value: number,
+	milestones: readonly number[],
+	reported: Set<number>
+): number[] {
+	return milestones.filter((milestone) => value >= milestone && !reported.has(milestone));
+}
+
+type FormResult = { type: 'success' | 'failure' | 'error' | 'redirect'; status?: number };
+
+/** The contact form outcome, without anything the visitor typed. */
+export function contactResult(result: FormResult): 'sent' | 'invalid' | 'mail-failed' | 'error' {
+	if (result.type === 'success' || result.type === 'redirect') return 'sent';
+	if (result.type === 'failure') return result.status === 400 ? 'invalid' : 'mail-failed';
+	return 'error';
 }

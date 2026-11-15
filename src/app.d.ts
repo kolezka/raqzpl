@@ -22,13 +22,16 @@ declare global {
 	interface Window {
 		dataLayer?: unknown[];
 		gtag?: (...args: unknown[]) => void;
-		umami?: { track(event: string, data?: Record<string, string>): unknown };
+		umami?: {
+			track(event: string, data?: Record<string, string>): unknown;
+			identify(data: Record<string, string>): unknown;
+		};
 	}
 
 	// User-Agent Client Hints. Chromium only, so it stays optional.
 	interface Navigator {
 		userAgentData?: {
-			getHighEntropyValues(hints: string[]): Promise<{ model?: string }>;
+			getHighEntropyValues(hints: string[]): Promise<{ model?: string; platformVersion?: string }>;
 		};
 	}
 }
