@@ -15,11 +15,11 @@ function localStore(): Storage | undefined {
 	}
 }
 
-/** Runs once in the browser: restores an earlier answer and applies it. */
+/** Runs once in the browser: loads GA4 and applies an earlier answer, if any. */
 export function initConsent(): void {
 	consent.value = readConsent(localStore());
 	consent.ready = true;
-	if (consent.value) applyConsent(window, document, consent.value);
+	applyConsent(window, document, consent.value);
 }
 
 export function choose(value: Consent): void {
